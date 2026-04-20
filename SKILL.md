@@ -1,8 +1,8 @@
 ---
 name: jarvis-starter
-description: J.A.R.V.I.S. for your Claude Code project. On start — bootstrap with archetype classification, skill selection, wiki setup. After start — quiet persistent assistant via hooks that maintains wiki, recommends model/plan-mode for tasks, surfaces existing solutions, tracks project evolution. Built for vibe-coders. Bonus optional school-mode plugin for those who want to learn.
+description: J.A.R.V.I.S. for your Claude Code project. On start — bootstrap with archetype classification, skill selection, wiki setup. For existing projects — soft adopt via gap analysis (installs only missing features, respects existing config). After start/adopt — quiet persistent assistant via hooks that maintains wiki, recommends model/plan-mode for tasks, surfaces existing solutions, tracks project evolution. Built for vibe-coders. Bonus optional school-mode plugin for those who want to learn.
 user-invocable: true
-argument-hint: "start <description> | status | find <need> | evolve | decide | suggest | docs | audit | remember | school"
+argument-hint: "start <description> | adopt | status | find <need> | evolve | decide | suggest | docs | audit | remember | school"
 ---
 
 # JARVIS Starter — persistent project assistant
@@ -25,14 +25,41 @@ Or just:
 
 JARVIS runs the sequence:
 1. **Phase 0** — Brownfield scan (if the folder has `package.json`/`pyproject.toml`/`go.mod`/etc., parse stack before asking questions)
-2. **Phase 1** — Classification (see `archive/bootstrap/classification.md`)
-3. **Phase 2** — Proposal (stack + skills from registry + GitHub discovery via `on-demand/skill-discovery/`)
-4. **Phase 3** — Bootstrap (copies universal templates + archetype-specific overlays)
-5. **Phase 4** — Verification + Token audit
-6. **Phase 5** — Token optimization advice
-7. **Phase 6** — Activate persistent mode (core hooks)
+2. **Phase 0.5** — Dev-stage check (see `archive/bootstrap/brownfield-adopt.md`). If ≥2 dev-stage signals hit (≥10 commits, mature lockfile, real `src/`, existing `CLAUDE.md`, living `docs/`, running CI) — **default to Adopt mode**, not Start. User can override with `jarvis start --force`.
+3. **Phase 1** — Classification (see `archive/bootstrap/classification.md`)
+4. **Phase 2** — Proposal (stack + skills from registry + GitHub discovery via `on-demand/skill-discovery/`)
+5. **Phase 3** — Bootstrap (copies universal templates + archetype-specific overlays)
+6. **Phase 4** — Verification + Token audit
+7. **Phase 5** — Token optimization advice
+8. **Phase 6** — Activate persistent mode (core hooks)
 
-### 2. Persistent mode (after bootstrap)
+### 2. Adopt (existing project in active development)
+
+User writes:
+```
+> jarvis adopt
+```
+
+Or `jarvis start: <desc>` auto-redirects here when Phase 0.5 detects dev-stage signals.
+
+**Philosophy: observe first, install only gaps, respect everything the user already built.**
+
+JARVIS runs (see `archive/bootstrap/brownfield-adopt.md`):
+1. **Phase A — Observe** (read-only): stack, existing CLAUDE.md, hooks, docs, secret-scanners, issue tracking
+2. **Phase B — Gap analysis**: for each core feature, check if the project already solves that problem. Skip if yes.
+3. **Phase C — Proposal**: show interactive gap matrix. User approves / picks features / declines.
+4. **Phase D — Soft install**: only checked features, in `.jarvis/` namespace + new `jarvis-*.sh` hook files (never touches existing hooks / CLAUDE.md / docs).
+5. **Phase E — Record**: write state to `.jarvis/state.md` including which features were skipped and why.
+
+Hard rules in Adopt mode:
+- `.jarvis/` is the only new directory at project root
+- `CLAUDE.md` gets **one line** max: `<!-- JARVIS context: see .jarvis/state.md -->`
+- Hooks are **new files** (`jarvis-<feature>.sh`), never appended to existing hooks
+- `settings.json` is **structurally merged**, never overwritten
+- **No archetype overlay** — user can run `jarvis evolve <archetype>` later
+- **No `wiki/` created** if `docs/` already exists
+
+### 3. Persistent mode (after bootstrap or adopt)
 
 JARVIS lives in `.jarvis/` and works through core hooks:
 
@@ -76,20 +103,26 @@ Same hooks, but you can disable the ones that get in the way. All JARVIS decisio
 ## Installation
 
 ```bash
-# In a new project
+# Install the skill
 npx skills add dtdesigner36/jarvis-starter --yes
 
-# First message in Claude Code
+# New / empty project
 > jarvis start: <project description>
+
+# Existing project already in development
+> jarvis adopt
 ```
+
+If you type `jarvis start` in an existing project, JARVIS detects the dev-stage and auto-switches to Adopt (with a confirmation prompt).
 
 ## Important rules
 
 1. **Do NOT suggest enabling school-mode** — user decides
 2. **Do NOT output status automatically at session start** — only on `jarvis status`
 3. **Core hooks work always** after bootstrap (can be disabled via `.jarvis/plugins.md`)
-4. **Wiki is mandatory infrastructure** (not optional), Obsidian is optional
+4. **Wiki is mandatory infrastructure** in Start mode; in Adopt mode — respect existing docs, do not create parallel wiki/
 5. **Priority: quality > token optimization**
+6. **Brownfield-safe default**: when dev-stage is detected, default path is Adopt (gap-analysis, zero overwrite), not Start. See `archive/bootstrap/brownfield-adopt.md`.
 
 ## File architecture
 

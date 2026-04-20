@@ -18,16 +18,18 @@ Technically literate users — also fits. All JARVIS decisions are optional.
 ## Installation
 
 ```bash
-# In a new project folder
 npx skills add dtdesigner36/jarvis-starter --yes
+```
 
-# First message in Claude Code
+### New project
+
+```
 > jarvis start: <description of what you want to build>
 ```
 
-Example prompt:
+Example:
 ```
-> jarvis start: I want a Telegram bot for reminders with a Next.js web admin panel
+> jarvis start: Telegram bot for reminders with a Next.js admin panel
 ```
 
 JARVIS will walk you through:
@@ -37,11 +39,22 @@ JARVIS will walk you through:
 4. Infrastructure rollout (CLAUDE.md, hooks, wiki/, skills)
 5. Initial optimization advice
 
-## After bootstrap — commands
+### Existing project (already in development)
+
+```
+> jarvis adopt
+```
+
+Soft integration via **gap analysis**. JARVIS reads your project, detects what's already in place (docs, hooks, secret-scanners, model rules), and installs **only the features you're missing**. Does not touch existing CLAUDE.md, hooks, or docs. Everything JARVIS adds lives in `.jarvis/` or in new `jarvis-*.sh` hook files.
+
+If you run `jarvis start` in an existing project, JARVIS detects the dev-stage and auto-switches to Adopt (with a confirmation prompt). Force full bootstrap with `jarvis start --force` if needed.
+
+## After bootstrap / adopt — commands
 
 | Command | What it does |
 |---------|--------------|
 | `jarvis` or `jarvis status` | Brief project summary |
+| `jarvis adopt` | Soft-integrate into an existing project (gap analysis, no overwrite) |
 | `jarvis route "<task>"` | Model/plan recommendation for the task |
 | `jarvis find "<need>"` | Find a GitHub skill for a specific need |
 | `jarvis evolve <layer>` | Add an archetype layer (e.g., bot → bot+web) |

@@ -103,6 +103,23 @@ prisma/               → web-api with Prisma
 
 Brownfield results go into Phase 1 as additional_signals with weight +50 for each confirmed archetype. They dominate over the prompt if there's a conflict.
 
+## Dev-stage signals (Phase 0.5 — Adopt trigger)
+
+Beyond stack detection, also collect these signals to decide **Start vs Adopt**:
+
+| Signal | Check |
+|---|---|
+| Active git history | `git log --oneline \| wc -l` ≥ 10 |
+| Mature lockfile | `package-lock.json` / `pnpm-lock.yaml` / `poetry.lock` / `Cargo.lock` mtime > 7 days old |
+| Real source code | `src/` / `app/` / `lib/` / `pkg/` has >10 non-boilerplate files OR >500 LOC total |
+| Existing Claude setup | `CLAUDE.md` exists OR `.claude/` directory exists |
+| Existing docs | `docs/` / `wiki/` exists, OR `README.md` > 100 lines, OR `CHANGELOG.md` exists |
+| Running CI | `.github/workflows/` / `.gitlab-ci.yml` / `.circleci/` exists |
+
+**Rule: ≥2 signals → default to Adopt mode**, not Start. See `brownfield-adopt.md` for the Adopt flow.
+
+Edge: user can force Start with `jarvis start --force` even when signals are present.
+
 ## Edge cases
 
 - **Monorepo**: check package.json in subfolders client/, server/, apps/*, packages/*
