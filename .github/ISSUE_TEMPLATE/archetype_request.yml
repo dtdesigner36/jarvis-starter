@@ -1,0 +1,67 @@
+name: Archetype request
+description: Propose a new Tier 1 (full overlay) or Tier 2 (description-only) archetype
+title: "[archetype]: "
+labels: ["archetype", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        JARVIS currently ships 10 Tier-1 archetypes (full overlays) and 19 Tier-2 (descriptions only, runtime-generated overlays). Use this to propose a new one or upgrade Tier 2 → Tier 1.
+
+  - type: input
+    id: name
+    attributes:
+      label: Archetype name
+      placeholder: "browser-extension / data-pipeline / trading-bot / ..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Proposed tier
+      options:
+        - Tier 1 (full overlay)
+        - Tier 2 (description only)
+      default: 1
+    validations:
+      required: true
+
+  - type: textarea
+    id: signals
+    attributes:
+      label: Classification signals
+      description: Keywords in prompt and brownfield signals that should map to this archetype.
+      placeholder: |
+        Keywords: "chrome extension", "browser plugin", "content script", "manifest v3"
+        Brownfield: manifest.json + content_scripts, popup.html, background.js, WXT, Plasmo
+    validations:
+      required: true
+
+  - type: textarea
+    id: stack
+    attributes:
+      label: Default stack
+      placeholder: "WXT + TypeScript + React, manifest v3"
+    validations:
+      required: true
+
+  - type: textarea
+    id: wiki
+    attributes:
+      label: Suggested wiki folders
+      placeholder: |
+        Extension/
+        Permissions/
+        Manifest/
+
+  - type: textarea
+    id: skills
+    attributes:
+      label: Relevant skills / libraries worth auto-recommending
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Real use-cases
+      description: Projects or ideas that would benefit from this archetype.

@@ -1,0 +1,86 @@
+name: Bug report
+description: Something broke or behaves unexpectedly
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more specific you can be, the faster it gets fixed.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Clear description of the unexpected behavior.
+      placeholder: "I ran `jarvis adopt` and JARVIS tried to overwrite my existing CLAUDE.md instead of respecting it."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What should have happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps so someone else can hit the same bug.
+      placeholder: |
+        1. Fresh Next.js project with existing CLAUDE.md (~80 lines, model rules)
+        2. Install skill: `npx skills add dtdesigner36/jarvis-starter --yes`
+        3. In Claude Code: `> jarvis adopt`
+        4. Observe JARVIS appending archetype rules into CLAUDE.md
+    validations:
+      required: true
+
+  - type: input
+    id: mode
+    attributes:
+      label: Which JARVIS mode
+      placeholder: "start / adopt / evolve / other"
+
+  - type: input
+    id: archetype
+    attributes:
+      label: Detected archetype(s)
+      placeholder: "web-app + web-api"
+
+  - type: input
+    id: stack
+    attributes:
+      label: Stack
+      placeholder: "Next.js 15, Prisma, PostgreSQL, Tailwind"
+
+  - type: input
+    id: claude-code-version
+    attributes:
+      label: Claude Code version
+      placeholder: "run `claude --version`"
+
+  - type: input
+    id: os
+    attributes:
+      label: OS / shell
+      placeholder: "macOS 14.5, zsh"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / output
+      description: Trim to what matters. Paste as code blocks.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this isn't a duplicate
+          required: true
+        - label: I'm on the latest release (or describe the version I'm on)
+          required: true

@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest a new feature, command, archetype, or improvement
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that's painful or impossible right now?
+      placeholder: "When I work on monorepos, `jarvis adopt` only scans the root workspace — I want per-workspace adoption."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you'd like JARVIS to do. Concrete commands, hook triggers, or flows are great.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you tried or solutions you rejected.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Bootstrap / Start
+        - Adopt / brownfield
+        - Core hook (wiki-maintenance, task-routing, memory-recall, focus-tracker, security-watch)
+        - On-demand command
+        - Archetype (Tier 1/2)
+        - Plugin (school-mode, future plugins)
+        - Skill discovery
+        - Docs / UX
+        - Other
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this isn't already proposed
+          required: true
