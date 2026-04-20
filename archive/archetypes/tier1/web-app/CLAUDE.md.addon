@@ -1,0 +1,29 @@
+## Frontend changes
+
+### Design context (once per project)
+- `.impeccable.md` missing → JARVIS invokes skill `impeccable teach` before ANY design task
+- `.impeccable.md` exists → all design skills read it automatically
+
+### Planning (before code)
+- New feature with UX decisions → **first** skill `shape`, then implementation
+- Simple component → `/frontend-design`
+
+### Implementation
+- Complex UI → skill `impeccable craft`
+- Utility component → `/frontend-design`
+
+### Refinement (as needed)
+- Typography feels generic → skill `typeset`
+- Colors flat → skill `colorize`
+- Need animation → skill `animate`
+- Agency-tier polish → skill `high-end-visual-design`
+
+### Audit
+- Full (a11y + perf + tokens) → skill `audit`
+- Quick: `/css-audit`, `/responsive-check`
+
+### Always
+- `*.tsx` with `t()`/`ts()` → `/i18n-sync`
+- New color 3+ times → `/theme-token`
+- Final polish → skill `polish`
+- Bug screenshot → `/screenshot-diff` → skill `polish`

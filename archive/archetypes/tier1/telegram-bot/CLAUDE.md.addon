@@ -1,0 +1,13 @@
+## Telegram Bot Rules
+
+- `handlers/*.py` or `handlers/*.ts` changed → check edge case handling (empty messages, unicode, commands with arguments)
+- `config.yml` or `.env` changed → propose config validation before start
+- New command handler → add to wiki/Commands/ + update the `/help` command in the bot
+- `SKIP_WEBHOOK_VERIFICATION=true` in code → ❌ security warning
+- Bot token in code (not in env) → ❌ security warning
+
+### For vibe-coders
+- First bot? Start with polling, switch to webhooks in production
+- Database: SQLite for MVP, PostgreSQL when > 1000 users
+- aiogram / python-telegram-bot for Python; grammy for TypeScript — both are good
+- Consider middleware for logging, rate limits, user-state tracking

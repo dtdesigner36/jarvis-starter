@@ -1,0 +1,24 @@
+---
+jarvis-state: active
+bootstrap-date: {{BOOTSTRAP_DATE}}
+archetypes: {{ARCHETYPES}}
+---
+
+# Project State
+
+## Archetypes
+{{ARCHETYPES_LIST}}
+
+## Tech Stack
+{{STACK}}
+
+## Key decisions (from bootstrap)
+{{KEY_DECISIONS}}
+
+## Current focus
+_Auto-updated by focus-updater.sh. See `.jarvis/focus.md`._
+
+## Pending suggestions
+_JARVIS accumulates suggestions here until the user reviews them._
+
+{{SUGGESTIONS}}

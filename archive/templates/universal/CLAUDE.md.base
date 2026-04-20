@@ -1,0 +1,60 @@
+# Skills Trigger Rules
+
+Automatically run skills on the following events. Don't wait for the user to remind you.
+
+## Backend changes
+{{BACKEND_RULES}}
+
+## Frontend changes
+{{FRONTEND_RULES}}
+
+## Mobile / Native changes
+{{MOBILE_RULES}}
+
+## Game / Docs
+- New feature implemented → `/playtest` for e2e verification (if applicable)
+- New diagram needed or existing one to redesign → `/obsidian-canvas`
+- New system added → update `wiki/Systems/` + add an entry to `wiki/Devlog/`
+
+## New system detection
+- When a new module/feature is created → automatically run `/new-system` or `jarvis new-system`
+- When code analysis finds a module without `wiki/Systems/<Name>.md` → ask the user: "Create a wiki entry?"
+
+---
+
+# Living Docs Rule (mandatory)
+
+`wiki/` is living documentation. Update after every significant task.
+
+1. System added/changed → update `wiki/Systems/<System>.md`
+2. Architectural decision made → update `wiki/Architecture/` or `wiki/Devlog/`
+3. Non-trivial decision → entry in `wiki/Devlog/`
+4. A TL;DR section at the top of every `wiki/Systems/*.md` is mandatory for quick reading
+
+**Separation**: `wiki/` — project content (architecture, systems, decisions). `.jarvis/memory.md` — behavior, preferences, key decisions for the future.
+
+---
+
+# JARVIS — persistent assistant
+
+This project is accompanied by JARVIS-starter. Commands available in chat:
+- `jarvis status` — summary
+- `jarvis route "<task>"` — model recommendation for the task
+- `jarvis find "<need>"` — find a skill
+- `jarvis suggest` — improvement suggestions
+- `jarvis audit` — project audit
+- `jarvis school on` — optional learning plugin (off by default)
+
+JARVIS works quietly through hooks. Wiki reminders, task classification, memory recall — automatic. See `.jarvis/` for state + memory.
+
+## Skills in plan (during plan-mode)
+
+When drafting a plan for a **Medium+** task, mention which skills/commands are used at which steps. This gives transparency to the user (especially vibe-coders) and the chance to adjust before work starts.
+
+Rules:
+- **Trivial/Simple** — don't mention (noise)
+- **Medium** — briefly in one line at the end: "after edits I'll run /css-audit + /responsive-check"
+- **Complex** — per-step (1 line per step where relevant)
+- **Architectural** — full per-step breakdown with model per stage
+
+Format: `→ skill X` or `→ /command` without expanded explanations. Keep the plan compact. At the end of the plan — a **Verification** section listing check skills.

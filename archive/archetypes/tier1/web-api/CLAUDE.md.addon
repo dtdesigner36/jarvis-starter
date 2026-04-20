@@ -1,0 +1,15 @@
+## Backend changes
+
+- `*.controller.ts` or `*.service.ts` changed → `/api-contract`
+- `schema.prisma` changed → `/db-migrate` before migrating
+- New Prisma field → `/prisma-field` (updates schema + admin.service.ts + wiki)
+- New module `src/modules/<name>/` → `/new-system`
+- `*.middleware.ts` / `*.guard.ts` → record in wiki/Architecture/
+- `*.dto.ts` changed → check class-validator annotations
+
+### For vibe-coders
+- DO NOT put Prisma queries in controllers — use services
+- DO NOT store secrets in code — all in .env
+- Always validate via DTOs (class-validator)
+- Rate limits on every public endpoint
+- Logging via Nest Logger, not console.log

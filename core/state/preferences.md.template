@@ -1,0 +1,46 @@
+# JARVIS Preferences
+
+User-level settings that JARVIS reads when analyzing a task. Created at bootstrap; can be edited manually or via `jarvis remember "<pref>"`.
+
+## Model strategy
+
+How JARVIS recommends models in plan mode:
+
+```
+model-strategy: single
+```
+
+Options:
+- `single` (default) — one model for the whole task. Simpler, doesn't break prompt cache. Even for Complex — Opus for the whole session.
+- `smart` — JARVIS analyzes and suggests TWO models (plan vs impl). If they match — one. If different — switching instructions. Cheaper on long tasks but requires a manual switch.
+- `auto-smart` — like `smart`, plus always split for Architectural (Opus→Sonnet→Opus).
+
+## Task estimate threshold for switching
+
+```
+long-task-threshold: 60  # minutes
+```
+
+If `smart` and the task is estimated longer than this threshold — JARVIS suggests switching. Shorter — one model.
+
+## Other settings
+
+```
+# anti-spam: for how many days to ignore repeated advice per CLASS
+routing-hint-cooldown: 3
+
+# whether to show task routing for Simple in plan-mode
+suggest-auto-for-simple: true
+```
+
+## Per-archetype overrides
+
+```
+# for web-app, always suggest polish after implementation
+web-app:
+  auto-suggest-polish: true
+
+# for parser, never suggest plan-mode (too iterative)
+parser:
+  force-skip-plan: true
+```

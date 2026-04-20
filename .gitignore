@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# JARVIS runtime (for users' projects, not for this repo)
+.jarvis/cache/
+.jarvis/backups/
+.jarvis/last-wiki-warning
+.jarvis/auto-mode-hint-*
+
+# Test artifacts
+/tmp/
+test-output/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+Thumbs.db

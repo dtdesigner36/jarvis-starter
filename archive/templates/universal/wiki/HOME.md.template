@@ -1,0 +1,79 @@
+---
+tags: [moc, home]
+---
+
+# {{PROJECT_NAME}} — Knowledge base
+
+> {{PROJECT_DESCRIPTION}}
+> **Stack**: {{STACK}}
+> **Archetypes**: {{ARCHETYPES}}
+
+---
+
+## Diagrams (Canvas)
+
+| Diagram | Description |
+|---------|-------------|
+| [[Canvas/Architecture.canvas\|🏗️ Architecture]] | Overall project layout |
+{{ARCHETYPE_CANVASES}}
+
+---
+
+## Systems
+
+```dataview
+TABLE tags, status
+FROM "wiki/Systems"
+SORT file.name ASC
+```
+
+{{SYSTEMS_LIST}}
+
+---
+
+## Architecture
+
+```dataview
+TABLE tags
+FROM "wiki/Architecture"
+SORT file.name ASC
+```
+
+{{ARCHITECTURE_LIST}}
+
+---
+
+## Recent changes
+
+```dataview
+TABLE file.mtime AS "Updated"
+FROM "wiki"
+WHERE file.name != "HOME"
+SORT file.mtime DESC
+LIMIT 10
+```
+
+---
+
+## Devlog
+
+```dataview
+LIST
+FROM "wiki/Devlog"
+SORT file.ctime DESC
+LIMIT 5
+```
+
+→ [[Devlog/README|Open full devlog]]
+
+---
+
+## JARVIS
+
+JARVIS-starter is installed in this project. Commands in chat:
+- `jarvis status` — current status
+- `jarvis suggest` — improvement suggestions
+- `jarvis find "<need>"` — find a skill for a need
+- `jarvis audit` — full audit
+
+See `.jarvis/` for project state and memory.
