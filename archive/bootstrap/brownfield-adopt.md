@@ -60,15 +60,25 @@ For each JARVIS core feature, check if the project already solves that problem. 
 
 ### Gap matrix
 
-| JARVIS feature | "Already have it" signal (skip if true) | Why skip matters |
-|---|---|---|
-| **task-routing** | `CLAUDE.md` contains model-selection rules / plan-mode guidance / complexity tiers | User already tuned model picks |
-| **memory-recall** | Living `docs/` or `wiki/` updated in last 30 days; OR ADR folder; OR `CLAUDE.md` has a "past decisions" section | User has their own recall system |
-| **wiki-maintenance** | `docs/` or `wiki/` updated in last 30 days (git log on folder) | User maintains docs their way |
-| **security-watch** | `.gitleaks.toml` / `husky` pre-commit with secret scan / `trufflehog` config / `.pre-commit-config.yaml` with `detect-secrets` | Existing scanner is probably better-tuned |
-| **focus-tracker** | `TODO.md` maintained; OR linear/jira integration; OR active `CHANGELOG.md` | User tracks focus elsewhere |
-| **skill-discovery** (on-demand) | Never skip — it's on-demand only, zero cost | — |
-| **school-mode** (plugin) | Never auto-offer — user-invoked only | — |
+| JARVIS feature | "Already have it" signal (skip if true) | Dead-by-construction (skip if true) | Why skip matters |
+|---|---|---|---|
+| **task-routing** | `CLAUDE.md` contains model-selection rules / plan-mode guidance / complexity tiers | — | User already tuned model picks |
+| **memory-recall** | Living `docs/` or `wiki/` updated in last 30 days; OR ADR folder; OR `CLAUDE.md` has a "past decisions" section | **No docs/wiki AND no auto-seed** — the hook has nothing to match against | User has their own recall system / without content the hook stays silent forever |
+| **wiki-maintenance** | `docs/` or `wiki/` updated in last 30 days | **No `wiki/` created AND user declined minimal wiki** — reminders point to a nonexistent wiki | Nothing to maintain if there's no wiki |
+| **security-watch** | `.gitleaks.toml` / `husky` pre-commit with secret scan / `trufflehog` config / `.pre-commit-config.yaml` with `detect-secrets` | — | Existing scanner is probably better-tuned |
+| **focus-tracker** | `TODO.md` maintained; OR linear/jira integration; OR active `CHANGELOG.md` | — | User tracks focus elsewhere |
+| **skill-discovery** (on-demand) | Never skip — it's on-demand only, zero cost | — | — |
+| **school-mode** (plugin) | Never auto-offer — user-invoked only | — | — |
+
+### Auto-seed when installing memory-recall
+
+If memory-recall passes the gap check (user has no recall system) **and the project has no `wiki/` and no `docs/`** — at install time JARVIS auto-seeds `.jarvis/memory.md` from:
+
+- `git log --oneline -50` — last 50 commit headlines
+- First 40 lines of `README.md` (if present)
+- `CLAUDE.md` (if it has content beyond the JARVIS marker)
+
+This gives the hook **something to match against from day one**, instead of an empty file. The user sees "these are my past decisions" and can extend it manually.
 
 ### Detection rules (implementation hints)
 
@@ -123,7 +133,10 @@ Rules, hard-coded, no exceptions:
 2. **Hooks go into new files** named `.claude/hooks/jarvis-<feature>.sh`. Never append to existing hook files.
 3. **`CLAUDE.md` gets ONE line** max: `<!-- JARVIS context: see .jarvis/state.md -->`. No feature rules, no archetype overlay, no merge dump.
 4. **`settings.json`** — add only the JARVIS hook entries, preserve everything else. Use `jq` or structured merge, not append.
-5. **`wiki/` is NOT created** in adopt mode. JARVIS records location of existing docs in `.jarvis/state.md` (e.g., `docs_location: docs/`).
+5. **`wiki/` is created in Adopt only when the project has no documentation at all.** Rule:
+   - If `docs/` or an existing `wiki/` has content — JARVIS **does not** create `wiki/`, records location in `.jarvis/state.md` (`docs_location: docs/`)
+   - If only `CHANGELOG.md` and/or a long `README.md` (>100 lines) — JARVIS asks the user "create `wiki/` for system notes?"
+   - If none of the above — a **minimal `wiki/`** is created: `HOME.md` + `Devlog/README.md` + `Systems/_template.md`. Otherwise `memory-recall` and `wiki-maintenance` hooks are dead-by-construction (nothing to match against).
 6. **No archetype overlay** in adopt mode — user can run `jarvis evolve <archetype>` later if they want.
 
 ### Install per feature
@@ -172,8 +185,22 @@ existing-infra-respected:
 
 - **User says `pick-features` and enables a skipped one**: warn about potential overlap, still install if confirmed. Record in `state.md` as `forced: true`.
 - **Project has existing `.jarvis/` from prior run**: adopt becomes a diff — show what's new in gap matrix vs. current `enabled-features.md`, only propose the delta.
-- **Monorepo**: run gap analysis per workspace (`apps/*`, `packages/*`). Ask user whether to adopt at root or per-workspace.
+- **Monorepo**: run gap analysis per workspace (`apps/*`, `packages/*`). Ask user whether to adopt at root or per-workspace. Important: the lockfile-maturity check must scan subfolders, not just root (discovered in the onlycalculated test — `app/package-lock.json` was missed by root-only detection).
 - **Conflict: user approved a feature but its hook name collides with existing file**: stop, show error, ask for rename or skip. Never overwrite.
+
+## 8. Claude Code runtime quirks
+
+### ⚠️ `.claude/settings.json` can be rewritten by the permission system mid-session
+
+Observed during the onlycalculated test: if adopt install runs **inside a live Claude Code session**, the permission-add mechanism (when the user approves a new Bash pattern) can rewrite `settings.json` and strip the `hooks` block. Installed hooks look present in filesystem, but the runtime no longer fires them.
+
+**Mitigations (decreasing reliability):**
+
+1. **Install from an external shell**: `cd project && bash {{SKILL_PATH}}/scripts/bootstrap.sh <archetype>` in a regular terminal. The permission system only touches `settings.json` when Claude Code is active.
+2. **Restart the Claude Code session** right after install — reload re-initializes hooks from a fresh `settings.json`.
+3. **Self-check** at the start of each new session: read `settings.json`, verify JARVIS hooks are present. If they're gone — silently re-run `scripts/bootstrap.sh` (it's idempotent).
+
+Until self-check is implemented — **recommend the user to restart the session after Phase D**.
 
 ---
 
