@@ -144,8 +144,22 @@ for hook_name in post-edit.sh post-bash.sh pre-prompt.sh; do
 done
 
 # Replace placeholders
-sed -i '' "s|{{SKILL_PATH}}|${SKILL_PATH}|g" .claude/hooks/*.sh 2>/dev/null || sed -i "s|{{SKILL_PATH}}|${SKILL_PATH}|g" .claude/hooks/*.sh
-sed -i '' "s|{{PROJECT_ROOT}}|$(pwd)|g" .claude/hooks/*.sh 2>/dev/null || sed -i "s|{{PROJECT_ROOT}}|$(pwd)|g" .claude/hooks/*.sh
+SKILL_PATH_ABS=$(cd "${SKILL_PATH}" && pwd)
+PROJECT_ROOT_ABS="$(pwd)"
+sed -i '' "s|{{SKILL_PATH}}|${SKILL_PATH_ABS}|g" .claude/hooks/*.sh 2>/dev/null || sed -i "s|{{SKILL_PATH}}|${SKILL_PATH_ABS}|g" .claude/hooks/*.sh
+sed -i '' "s|{{PROJECT_ROOT}}|${PROJECT_ROOT_ABS}|g" .claude/hooks/*.sh 2>/dev/null || sed -i "s|{{PROJECT_ROOT}}|${PROJECT_ROOT_ABS}|g" .claude/hooks/*.sh
+
+# Replace archetype trigger placeholders
+ADDON="${SKILL_PATH_ABS}/archive/archetypes/tier1/${ARCHETYPE}/hooks-addon.sh"
+if [ -f "${ADDON}" ]; then
+  TRIGGER_LINE="bash \"${ADDON}\" <<< \"\$INPUT\""
+  echo "  → archetype hook triggers: ${ADDON}"
+else
+  TRIGGER_LINE=""
+fi
+TRIGGER_ESC=$(printf '%s\n' "${TRIGGER_LINE}" | sed 's:[&|\\]:\\&:g')
+sed -i '' "s|{{ARCHETYPE_POST_EDIT_TRIGGERS}}|${TRIGGER_ESC}|g" .claude/hooks/post-edit.sh 2>/dev/null || sed -i "s|{{ARCHETYPE_POST_EDIT_TRIGGERS}}|${TRIGGER_ESC}|g" .claude/hooks/post-edit.sh
+sed -i '' "s|{{ARCHETYPE_POST_BASH_TRIGGERS}}|${TRIGGER_ESC}|g" .claude/hooks/post-bash.sh 2>/dev/null || sed -i "s|{{ARCHETYPE_POST_BASH_TRIGGERS}}|${TRIGGER_ESC}|g" .claude/hooks/post-bash.sh
 
 # ─── 5. Commands (skip if conflict) ──────────────────────────────
 mkdir -p .claude/commands

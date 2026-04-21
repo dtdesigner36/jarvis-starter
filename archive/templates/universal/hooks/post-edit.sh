@@ -1,17 +1,19 @@
 #!/bin/bash
-# Post-Edit/Write hook — runs JARVIS core + archetype-specific triggers
+# Post-Edit/Write hook — JARVIS core + archetype triggers
 
-# JARVIS wiki-maintenance (always)
-bash {{SKILL_PATH}}/core/wiki-maintenance/hook-detector.sh <<< "$(cat)"
+INPUT=$(cat)
 
-# JARVIS focus-tracker (always, passive, 0 tokens)
-bash {{SKILL_PATH}}/core/focus-tracker/focus-updater.sh <<< "$(cat)"
+# JARVIS wiki-maintenance (always on)
+bash "{{SKILL_PATH}}/core/wiki-maintenance/hook-detector.sh" <<< "$INPUT"
 
-# JARVIS security-watch (always)
-bash {{SKILL_PATH}}/core/security-watch/secret-scanner.sh <<< "$(cat)"
-bash {{SKILL_PATH}}/core/security-watch/gitignore-check.sh <<< "$(cat)"
+# JARVIS focus-tracker (always on, passive, 0 tokens)
+bash "{{SKILL_PATH}}/core/focus-tracker/focus-updater.sh" <<< "$INPUT"
 
-# Archetype-specific triggers (populated at bootstrap)
+# JARVIS security-watch (always on)
+bash "{{SKILL_PATH}}/core/security-watch/secret-scanner.sh" <<< "$INPUT"
+bash "{{SKILL_PATH}}/core/security-watch/gitignore-check.sh" <<< "$INPUT"
+
+# Archetype-specific triggers (substituted by bootstrap.sh)
 {{ARCHETYPE_POST_EDIT_TRIGGERS}}
 
 exit 0

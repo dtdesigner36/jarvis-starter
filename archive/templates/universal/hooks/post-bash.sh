@@ -1,5 +1,5 @@
 #!/bin/bash
-# Post-Bash hook — tracks important commands
+# Post-Bash hook — tracks important commands + archetype triggers
 
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('command',''))" 2>/dev/null)
@@ -9,7 +9,7 @@ if [ -z "$CMD" ] || [ ! -d ".jarvis" ]; then
 fi
 
 # Security: gitignore-check also handles Bash (git add .env, git commit)
-bash {{SKILL_PATH}}/core/security-watch/gitignore-check.sh <<< "$INPUT"
+bash "{{SKILL_PATH}}/core/security-watch/gitignore-check.sh" <<< "$INPUT"
 
 # Prisma migration → remind about canvas (if present)
 if echo "$CMD" | grep -q "prisma migrate"; then
@@ -28,7 +28,7 @@ if echo "$CMD" | grep -qE "pip install .*(telegram|discord|fastapi|django|flask|
   echo "💠 JARVIS: major framework installed. Verify archetype currency: jarvis status"
 fi
 
-# Archetype-specific Bash triggers
+# Archetype-specific Bash triggers (substituted by bootstrap.sh)
 {{ARCHETYPE_POST_BASH_TRIGGERS}}
 
 exit 0
