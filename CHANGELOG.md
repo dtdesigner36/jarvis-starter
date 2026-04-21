@@ -4,6 +4,10 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+
+- **adopt.sh: auto-apply archetype overlay on confident detection.** When `≥3` stack-tags are detected (typical of a real project like Next.js + React + Tailwind + Prisma + TypeScript), the archetype overlay is now applied automatically instead of waiting for a manual `--enable archetype-overlay`. Escape hatches: `--no-archetype` (skip this run), `archetype-overlay: never` line in `.jarvis/preferences.md` (persistent skip), interactive Y/n/never prompt when running in a TTY. Low-confidence projects (`<3` tags) keep the old opt-in row. Addresses r5 feedback: *"every retest shows the overlay is useful — and every retest requires an extra manual step to enable it"*.
+
 ### Fixed
 
 - **safe-uninstall.sh: backup dir visibility (UX).** Backup dir was named `.jarvis-uninstall-backup-<TS>` with a leading dot, so `ls` without `-a` hid it — reviewers thought `.jarvis/` wasn't being backed up. Renamed to `jarvis-uninstall-backup-<TS>` and added an explicit `find` listing of backed-up files at the end of the uninstall output. The `.jarvis/` backup itself was there all along; fix is purely about making it visible.

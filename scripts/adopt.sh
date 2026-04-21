@@ -32,6 +32,8 @@ while [ $# -gt 0 ]; do
     --enable) ENABLE="$2"; shift 2 ;;
     --skip) SKIP="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --no-archetype) NO_ARCHETYPE=1; shift ;;
+    --yes) NONINTERACTIVE=1; shift ;;
     -h|--help)
       sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
@@ -42,6 +44,8 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+NO_ARCHETYPE="${NO_ARCHETYPE:-0}"
+NONINTERACTIVE="${NONINTERACTIVE:-0}"
 
 ALL_FEATURES="task-routing adr-detector memory-recall focus-tracker wiki-maintenance security-watch"
 
@@ -208,6 +212,16 @@ if [ -z "${DETECTED_STACK}" ] && ([ -f pyproject.toml ] || [ -f requirements.txt
   DETECTED_ARCH="${PY_ARCH}"
 fi
 
+# Confidence = number of stack-tags (best proxy for "user has a real project").
+# Typical Next.js project: nextjs,react,tailwind,prisma,typescript = 5 tags.
+# Minimal bot: aiogram,python = 2 tags.
+# Threshold for auto-applying the archetype overlay: 3 (average realistic project).
+if [ -n "${DETECTED_STACK}" ]; then
+  DETECTED_CONFIDENCE=$(echo "${DETECTED_STACK}" | tr ',' '\n' | wc -l | tr -d ' ')
+else
+  DETECTED_CONFIDENCE=0
+fi
+
 echo "   ┌─ Detected stack/archetype:"
 if [ -n "${DETECTED_ARCH}" ] || [ -n "${DETECTED_STACK}" ]; then
   [ -n "${DETECTED_ARCH}" ] && echo "   │  • archetype: ${DETECTED_ARCH}"
@@ -328,18 +342,81 @@ done
 echo "   └─"
 echo ""
 
-# Archetype overlay opt-in (only if detected)
+# Archetype overlay — auto-apply when detection is confident, with escape hatch.
+# Decision matrix:
+#   --enable archetype-overlay → apply (explicit yes)
+#   --no-archetype             → skip (explicit no)
+#   preferences "never"        → skip (persistent no)
+#   confidence >= 3 + interactive tty → ask "Y/n/never" → apply on Y
+#   confidence >= 3 + non-interactive → auto-apply
+#   confidence < 3             → show opt-in row (manual evolve)
+APPLY_ARCHETYPE="${APPLY_ARCHETYPE:-0}"
+ARCHETYPE_CONFIDENT_THRESHOLD=3
+PREFS_FILE=".jarvis/preferences.md"
+NEVER_FROM_PREFS=0
+[ -f "${PREFS_FILE}" ] && grep -qE '^archetype-overlay:[[:space:]]*never' "${PREFS_FILE}" 2>/dev/null && NEVER_FROM_PREFS=1
+
 if [ -n "${DETECTED_ARCH}" ] && [ "${DETECTED_ARCH}" != "unknown" ]; then
   ARCH_DIR="${SKILL_PATH}/archive/archetypes/tier1/${DETECTED_ARCH}"
   if [ -d "${ARCH_DIR}" ]; then
-    if echo ",${ENABLE}," | grep -q ",archetype-overlay,"; then
-      APPLY_ARCHETYPE=1
-      echo "   ┌─ Archetype overlay (--enable archetype-overlay):"
-      echo "   │  ✓ ${DETECTED_ARCH}-overlay will be applied (archetype-specific addon to CLAUDE.md + extra commands)"
+    ARCH_MARKER_CHECK="<!-- jarvis-archetype-overlay: ${DETECTED_ARCH} -->"
+    ALREADY_APPLIED=0
+    if [ -f CLAUDE.md ] && grep -qF "${ARCH_MARKER_CHECK}" CLAUDE.md; then
+      ALREADY_APPLIED=1
+    fi
+
+    if [ "${ALREADY_APPLIED}" = "1" ]; then
+      echo "   ┌─ Archetype overlay: ${DETECTED_ARCH}"
+      echo "   │  ✓ already applied (CLAUDE.md marker present, skipping)"
       echo "   └─"
       echo ""
+    elif echo ",${ENABLE}," | grep -q ",archetype-overlay,"; then
+      APPLY_ARCHETYPE=1
+      echo "   ┌─ Archetype overlay (--enable archetype-overlay):"
+      echo "   │  ✓ ${DETECTED_ARCH}-overlay will be applied"
+      echo "   └─"
+      echo ""
+    elif [ "${NO_ARCHETYPE}" = "1" ]; then
+      echo "   ┌─ Archetype overlay: ${DETECTED_ARCH}"
+      echo "   │  × skipped (--no-archetype flag)"
+      echo "   └─"
+      echo ""
+    elif [ "${NEVER_FROM_PREFS}" = "1" ]; then
+      echo "   ┌─ Archetype overlay: ${DETECTED_ARCH}"
+      echo "   │  × skipped (preferences.md says 'archetype-overlay: never')"
+      echo "   └─"
+      echo ""
+    elif [ "${DETECTED_CONFIDENCE:-0}" -ge "${ARCHETYPE_CONFIDENT_THRESHOLD}" ]; then
+      if [ "${NONINTERACTIVE}" = "1" ] || [ ! -t 0 ]; then
+        APPLY_ARCHETYPE=1
+        echo "   ┌─ Archetype overlay: ${DETECTED_ARCH}  (confidence: ${DETECTED_CONFIDENCE} stack-tags → auto-apply)"
+        echo "   │  ✓ will be applied automatically"
+        echo "   │    (to skip: --no-archetype; to never ask: add 'archetype-overlay: never' to .jarvis/preferences.md)"
+        echo "   └─"
+        echo ""
+      else
+        echo "   ┌─ Archetype overlay: ${DETECTED_ARCH}  (confidence: ${DETECTED_CONFIDENCE} stack-tags detected)"
+        echo "   │  Adds CLAUDE.md addon + archetype-specific commands + hook-addon."
+        echo "   └─"
+        read -p "Apply ${DETECTED_ARCH} overlay? (Y/n/never) " -r REPLY
+        case "${REPLY}" in
+          [Nn]) APPLY_ARCHETYPE=0; echo "   × skipped (this run only)"; echo "" ;;
+          [Nn][Ee][Vv][Ee][Rr])
+            APPLY_ARCHETYPE=0
+            mkdir -p .jarvis
+            if [ -f "${PREFS_FILE}" ]; then
+              grep -v '^archetype-overlay:' "${PREFS_FILE}" > "${PREFS_FILE}.tmp" 2>/dev/null || true
+              mv "${PREFS_FILE}.tmp" "${PREFS_FILE}"
+            fi
+            echo "archetype-overlay: never" >> "${PREFS_FILE}"
+            echo "   × skipped — preference 'archetype-overlay: never' saved"
+            echo ""
+            ;;
+          *) APPLY_ARCHETYPE=1; echo "   ✓ will be applied"; echo "" ;;
+        esac
+      fi
     else
-      echo "   ┌─ Available but NOT applied (opt-in):"
+      echo "   ┌─ Available but NOT applied (opt-in, low confidence: ${DETECTED_CONFIDENCE:-0} stack-tags):"
       echo "   │  ☐ archetype-overlay (${DETECTED_ARCH}) — adds CLAUDE.md addon + commands"
       echo "   │     To apply: jarvis evolve ${DETECTED_ARCH}  (or --enable archetype-overlay on adopt)"
       echo "   └─"
