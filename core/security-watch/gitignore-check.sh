@@ -57,6 +57,19 @@ if [ "$TOOL" = "Bash" ] && echo "$CMD" | grep -qE "git commit"; then
   fi
 fi
 
+# ─── Edit on auth/RLS/middleware/migration files → suggest jarvis security ─
+if [ -n "$FILE" ] && echo "$FILE" | grep -qE "(auth|rls|middleware|policies|policy|migrations?/)" && ! echo "$FILE" | grep -qE "(test|spec|node_modules|\.next/)"; then
+  LAST_SEC_HINT=".jarvis/last-security-hint"
+  NOW_TS=$(date +%s)
+  LAST_TS=$(stat -f "%m" "${LAST_SEC_HINT}" 2>/dev/null || echo 0)
+  # No more often than once every 7 days
+  if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 7 ]; then
+    echo "💡 JARVIS: editing an auth/security-sensitive file. Try \`jarvis security\` for an audit (RLS, policies, secret leaks)."
+    touch "${LAST_SEC_HINT}"
+    FIRED=1
+  fi
+fi
+
 # usage-log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ "${FIRED}" = "1" ]; then

@@ -29,6 +29,8 @@ JARVIS runs the sequence:
 3. **Phase 1** — Classification (see `archive/bootstrap/classification.md`)
 4. **Phase 2** — Proposal (stack + skills from registry + GitHub discovery via `on-demand/skill-discovery/`)
 5. **Phase 3** — Bootstrap installer — **MUST run `bash {{SKILL_PATH}}/scripts/bootstrap.sh <archetype>`** via the Bash tool after the user confirms Phase 2 (`{{SKILL_PATH}}` is where the skill is installed). This script actually copies universal templates + archetype overlay, creates `.jarvis/`, installs hooks into `.claude/hooks/`, and **merges hooks into `.claude/settings.json` via `jq`**. Reading the script and describing what it would do is not acceptable — it must be run.
+
+   **After bootstrap.sh completes — call stack-matcher** for proactive skill recommendations: `bash {{SKILL_PATH}}/core/skill-discovery/stack-matcher.sh --archetype <archetype> --stack "<detected-tags>"`. Show its output to the user as part of Phase 2 proposal — this fulfills the "skill discovery" promise from the SKILL.md description.
 6. **Phase 4** — Verification. **Mandatory checks:**
    - `jq '.hooks.PostToolUse' .claude/settings.json` returns an array containing JARVIS hooks (post-edit + post-bash)
    - `jq '.hooks.UserPromptSubmit' .claude/settings.json` returns an array containing the JARVIS hook (pre-prompt)

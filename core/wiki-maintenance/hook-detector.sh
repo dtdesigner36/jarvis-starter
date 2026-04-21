@@ -17,6 +17,16 @@ fi
 
 FIRED=0
 
+# Counter "edits without wiki touched" — for periodic suggestion of `jarvis docs`
+COUNTER_FILE=".jarvis/wiki-stale-counter"
+CURRENT=$(cat "${COUNTER_FILE}" 2>/dev/null || echo 0)
+if echo "$FILE" | grep -q "^wiki/"; then
+  echo 0 > "${COUNTER_FILE}"
+else
+  CURRENT=$((CURRENT + 1))
+  echo "${CURRENT}" > "${COUNTER_FILE}"
+fi
+
 # ─── New module/feature created ───────────────────────────────────
 # Detect via Write tool on a file in a new folder src/modules/<name>/ or server/src/modules/<name>/
 if [ "$TOOL" = "Write" ]; then
@@ -69,6 +79,20 @@ if [ -d "wiki" ]; then
         FIRED=1
       fi
     fi
+  fi
+fi
+
+# Periodic suggestion: after 30 code edits without a wiki touch — hint at `jarvis docs`
+if [ "${CURRENT}" -ge 30 ] && [ "${FIRED}" = "0" ]; then
+  LAST_DOCS_HINT=".jarvis/last-docs-hint"
+  NOW_TS=$(date +%s)
+  LAST_TS=$(stat -f "%m" "${LAST_DOCS_HINT}" 2>/dev/null || echo 0)
+  # No more often than once every 3 days
+  if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 3 ]; then
+    echo "💡 JARVIS: ${CURRENT} code edits without a wiki update. Try \`jarvis docs\` to check wiki freshness."
+    touch "${LAST_DOCS_HINT}"
+    echo 0 > "${COUNTER_FILE}"
+    FIRED=1
   fi
 fi
 

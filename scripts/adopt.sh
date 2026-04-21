@@ -16,7 +16,6 @@
 set -euo pipefail
 
 # ─── CWD lock ─────────────────────────────────────────────────────
-# Pin the project root at the very start — any cd inside won't affect returns.
 PROJECT_ROOT="$(pwd)"
 cd "${PROJECT_ROOT}"
 
@@ -84,7 +83,7 @@ echo "   ┌─ Existing infrastructure:"
 echo "   └─"
 echo ""
 
-# CLAUDE.md — check if it already has model/plan/complexity rules
+# CLAUDE.md — check for existing model/plan/complexity rules
 CLAUDE_HAS_MODEL_RULES=0
 if [ "${HAS_CLAUDEMD}" = "1" ]; then
   if grep -qiE "opus|sonnet|haiku|plan.?mode|trivial|simple|medium|complex|architectural" CLAUDE.md 2>/dev/null; then
@@ -99,13 +98,106 @@ if [ "${HAS_GIT}" = "1" ] && ([ "${HAS_DOCS}" = "1" ] || [ "${HAS_WIKI}" = "1" ]
   [ -n "${FRESH}" ] && DOCS_FRESH=1
 fi
 
+# ─── Stack detection (for stack-matcher in Phase C+F) ─────────────
+DETECTED_STACK=""
+DETECTED_ARCH=""
+
+PKG_FILES=""
+[ -f package.json ] && PKG_FILES="package.json"
+for sub in app apps/*/  packages/*/  client/  server/  web/  api/; do
+  [ -f "${sub}package.json" ] && PKG_FILES="${PKG_FILES} ${sub}package.json"
+done
+
+if [ -n "${PKG_FILES}" ]; then
+  STACK_TAGS=$(python3 - ${PKG_FILES} <<'PY' 2>/dev/null
+import json, sys
+TAG_MAP = {
+    "next": "nextjs", "react": "react", "vue": "vue", "svelte": "svelte",
+    "@angular/core": "angular", "solid-js": "solid",
+    "@remix-run/react": "remix", "nuxt": "nuxt", "@sveltejs/kit": "sveltekit", "astro": "astro",
+    "tailwindcss": "tailwind", "styled-components": "styled-components", "@emotion/react": "emotion",
+    "express": "express", "@nestjs/core": "nestjs", "fastify": "fastify",
+    "prisma": "prisma", "drizzle-orm": "drizzle", "mongodb": "mongodb",
+    "pg": "postgres", "mysql2": "mysql", "better-sqlite3": "sqlite",
+    "redis": "redis", "ioredis": "redis",
+    "@supabase/supabase-js": "supabase",
+    "grammy": "grammy", "discord.js": "discord.js", "@slack/bolt": "slack",
+    "phaser": "phaser", "three": "three", "@tauri-apps/api": "tauri",
+    "expo": "expo", "react-native": "react-native",
+    "playwright": "playwright", "puppeteer": "puppeteer",
+    "@anthropic-ai/sdk": "anthropic", "openai": "openai", "langchain": "langchain",
+    "i18next": "i18next", "next-intl": "next-intl",
+    "trpc": "trpc", "@trpc/server": "trpc",
+    "zod": "zod",
+    "typescript": "typescript",
+}
+ARCH_MAP = {
+    "next": "web-app", "remix": "web-app", "nuxt": "web-app", "@sveltejs/kit": "web-app", "astro": "landing",
+    "express": "web-api", "@nestjs/core": "web-api", "fastify": "web-api",
+    "grammy": "telegram-bot", "discord.js": "discord-bot", "@slack/bolt": "slack-bot",
+    "phaser": "browser-game", "three": "browser-game",
+    "expo": "mobile-app", "react-native": "mobile-app",
+    "@tauri-apps/api": "desktop", "electron": "desktop",
+    "@anthropic-ai/sdk": "llm-agent", "openai": "llm-agent", "langchain": "llm-agent",
+}
+tags = set()
+arch_votes = {}
+for path in sys.argv[1:]:
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except Exception:
+        continue
+    deps = {}
+    for k in ("dependencies", "devDependencies"):
+        deps.update(data.get(k) or {})
+    for dep in deps:
+        if dep in TAG_MAP:
+            tags.add(TAG_MAP[dep])
+        if dep in ARCH_MAP:
+            arch_votes[ARCH_MAP[dep]] = arch_votes.get(ARCH_MAP[dep], 0) + 1
+print(",".join(sorted(tags)))
+if arch_votes:
+    arch = sorted(arch_votes.items(), key=lambda x: -x[1])[0][0]
+    print(arch)
+PY
+)
+  DETECTED_STACK=$(echo "${STACK_TAGS}" | head -1)
+  DETECTED_ARCH=$(echo "${STACK_TAGS}" | sed -n '2p')
+fi
+
+if [ -z "${DETECTED_STACK}" ] && ([ -f pyproject.toml ] || [ -f requirements.txt ]); then
+  PY_DEPS=$(cat pyproject.toml requirements.txt 2>/dev/null)
+  PY_TAGS=""
+  PY_ARCH=""
+  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?aiogram" && PY_TAGS="${PY_TAGS},aiogram" && PY_ARCH="telegram-bot"
+  echo "${PY_DEPS}" | grep -iqE "python-telegram-bot" && PY_TAGS="${PY_TAGS},python-telegram-bot" && PY_ARCH="telegram-bot"
+  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?fastapi" && PY_TAGS="${PY_TAGS},fastapi" && [ -z "${PY_ARCH}" ] && PY_ARCH="web-api"
+  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?django" && PY_TAGS="${PY_TAGS},django" && [ -z "${PY_ARCH}" ] && PY_ARCH="web-app"
+  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?flask" && PY_TAGS="${PY_TAGS},flask" && [ -z "${PY_ARCH}" ] && PY_ARCH="web-api"
+  echo "${PY_DEPS}" | grep -iqE "scrapy|beautifulsoup4" && PY_TAGS="${PY_TAGS},scraping" && [ -z "${PY_ARCH}" ] && PY_ARCH="parser"
+  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?anthropic" && PY_TAGS="${PY_TAGS},anthropic" && [ -z "${PY_ARCH}" ] && PY_ARCH="llm-agent"
+  echo "${PY_DEPS}" | grep -iqE "langchain" && PY_TAGS="${PY_TAGS},langchain"
+  PY_TAGS="${PY_TAGS},python"
+  DETECTED_STACK=$(echo "${PY_TAGS}" | sed 's/^,//' | tr ',' '\n' | sort -u | paste -sd ',' -)
+  DETECTED_ARCH="${PY_ARCH}"
+fi
+
+if [ -n "${DETECTED_STACK}" ] || [ -n "${DETECTED_ARCH}" ]; then
+  echo "   ┌─ Detected stack/archetype:"
+  [ -n "${DETECTED_ARCH}" ] && echo "   │  • archetype: ${DETECTED_ARCH}"
+  [ -n "${DETECTED_STACK}" ] && echo "   │  • stack: ${DETECTED_STACK}"
+  echo "   └─"
+  echo ""
+fi
+
 # ─── Phase B — Gap analysis ───────────────────────────────────────
 echo "💠 Phase B: gap analysis"
 echo ""
 
 FEATURES_TO_INSTALL=()
 FEATURES_SKIPPED=()
-SKIP_REASONS=()  # parallel to FEATURES_SKIPPED (bash 3.2 — no assoc arrays)
+SKIP_REASONS=()
 
 consider() {
   local feature="$1"
@@ -187,6 +279,8 @@ fi
 consider "security-watch" "${SW_SKIP}" ""
 
 # ─── Phase C — Proposal ───────────────────────────────────────────
+echo "💠 Phase C: proposal"
+echo ""
 echo "   ┌─ Will install:"
 for f in "${FEATURES_TO_INSTALL[@]:-}"; do
   [ -z "${f}" ] && continue
@@ -199,6 +293,44 @@ for f in "${FEATURES_SKIPPED[@]:-}"; do
 done
 echo "   └─"
 echo ""
+
+# Archetype overlay opt-in (only if detected)
+if [ -n "${DETECTED_ARCH}" ] && [ "${DETECTED_ARCH}" != "unknown" ]; then
+  ARCH_DIR="${SKILL_PATH}/archive/archetypes/tier1/${DETECTED_ARCH}"
+  if [ -d "${ARCH_DIR}" ]; then
+    if echo ",${ENABLE}," | grep -q ",archetype-overlay,"; then
+      APPLY_ARCHETYPE=1
+      echo "   ┌─ Archetype overlay (--enable archetype-overlay):"
+      echo "   │  ✓ ${DETECTED_ARCH}-overlay will be applied (archetype-specific addon to CLAUDE.md + extra commands)"
+      echo "   └─"
+      echo ""
+    else
+      echo "   ┌─ Available but NOT applied (opt-in):"
+      echo "   │  ☐ archetype-overlay (${DETECTED_ARCH}) — adds CLAUDE.md addon + commands"
+      echo "   │     To apply: jarvis evolve ${DETECTED_ARCH}  (or --enable archetype-overlay on adopt)"
+      echo "   └─"
+      echo ""
+    fi
+  fi
+fi
+
+# Stack-match — proactive from registry (cheap, no GitHub)
+if [ -n "${DETECTED_ARCH}" ] && [ "${DETECTED_ARCH}" != "unknown" ]; then
+  echo "   ┌─ Recommended skills from registry (stack-match):"
+  STACK_RESULTS=$(bash "${SKILL_PATH}/core/skill-discovery/stack-matcher.sh" \
+      --archetype "${DETECTED_ARCH}" \
+      --stack "${DETECTED_STACK}" \
+      --top 5 2>/dev/null | grep -v "^$" | grep -vE "^💠|^Install via")
+  if [ -n "${STACK_RESULTS}" ]; then
+    echo "${STACK_RESULTS}" | sed 's/^/   │  /'
+  else
+    echo "   │  (no matches in registry for this archetype)"
+  fi
+  echo "   │"
+  echo "   │  → \`jarvis find <need>\` to search externally, \`jarvis self-audit\` for inventory"
+  echo "   └─"
+  echo ""
+fi
 
 if [ "${DRY_RUN}" = "1" ]; then
   echo "💠 Dry-run mode — exiting before install"
@@ -221,8 +353,9 @@ mode: adopt
 adopt-date: $(date +%Y-%m-%d)
 project-root: ${PROJECT_ROOT}
 skill-path: ${SKILL_PATH}
-archetype-detected: (not set — adopt does not apply overlay)
+archetype-detected: ${DETECTED_ARCH:-unknown}
 archetype-applied: none
+stack: ${DETECTED_STACK:-unknown}
 EOF
 touch .jarvis/memory.md .jarvis/focus.md .jarvis/timeline.md
 if [ ! -f .jarvis/preferences.md ] && [ -f "${SKILL_PATH}/core/state/preferences.md.template" ]; then
@@ -440,6 +573,56 @@ done
 
 install_hooks_registration
 
+# ─── Phase D.5 — Archetype overlay (opt-in) ────────────────────────
+APPLY_ARCHETYPE=${APPLY_ARCHETYPE:-0}
+if [ "${APPLY_ARCHETYPE}" = "1" ] && [ -n "${DETECTED_ARCH}" ]; then
+  ARCH_DIR="${SKILL_PATH}/archive/archetypes/tier1/${DETECTED_ARCH}"
+  if [ -d "${ARCH_DIR}" ]; then
+    if [ -f "${ARCH_DIR}/CLAUDE.md.addon" ] && [ -f CLAUDE.md ]; then
+      ARCH_MARKER="<!-- jarvis-archetype-overlay: ${DETECTED_ARCH} -->"
+      if ! grep -qF "${ARCH_MARKER}" CLAUDE.md; then
+        {
+          echo ""
+          echo "${ARCH_MARKER}"
+          cat "${ARCH_DIR}/CLAUDE.md.addon"
+        } >> CLAUDE.md
+        echo "   ✓ archetype overlay (${DETECTED_ARCH}) — CLAUDE.md.addon appended"
+      fi
+    fi
+    if [ -d "${ARCH_DIR}/commands" ]; then
+      mkdir -p .claude/commands
+      for cmd_file in "${ARCH_DIR}/commands/"*.md; do
+        [ ! -e "$cmd_file" ] && continue
+        cmd_name=$(basename "$cmd_file")
+        [ -f ".claude/commands/${cmd_name}" ] && continue
+        cp "$cmd_file" ".claude/commands/${cmd_name}"
+        echo "   ✓ archetype command: .claude/commands/${cmd_name}"
+      done
+    fi
+    if [ -f "${ARCH_DIR}/hooks-addon.sh" ]; then
+      ADDON_PATH="${ARCH_DIR}/hooks-addon.sh"
+      for HOOK in jarvis-wiki-maintenance.sh jarvis-focus-tracker.sh jarvis-security-watch.sh; do
+        [ ! -f ".claude/hooks/${HOOK}" ] && continue
+        if ! grep -qF "${ADDON_PATH}" ".claude/hooks/${HOOK}"; then
+          sed -i '' "/^exit 0$/i\\
+\\
+# Archetype trigger (${DETECTED_ARCH})\\
+bash \"${ADDON_PATH}\" <<< \"\$INPUT\"\\
+" ".claude/hooks/${HOOK}" 2>/dev/null || \
+            sed -i "/^exit 0$/i\\
+\\
+# Archetype trigger (${DETECTED_ARCH})\\
+bash \"${ADDON_PATH}\" <<< \"\$INPUT\"\\
+" ".claude/hooks/${HOOK}"
+        fi
+      done
+      echo "   ✓ archetype hook-addon (${DETECTED_ARCH}) wired into existing hooks"
+    fi
+    sed -i '' "s|^archetype-applied:.*|archetype-applied: ${DETECTED_ARCH}|" .jarvis/state.md 2>/dev/null || \
+      sed -i "s|^archetype-applied:.*|archetype-applied: ${DETECTED_ARCH}|" .jarvis/state.md
+  fi
+fi
+
 # ─── Phase E — Record ─────────────────────────────────────────────
 {
   echo ""
@@ -469,5 +652,31 @@ echo "✅ Adopt complete."
 echo "   Hooks in settings.json: ${HOOK_COUNT}"
 echo "   State: .jarvis/state.md, enabled-features.md, timeline.md"
 echo ""
+
+# ─── Phase F — Post-install digest ────────────────────────────────
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║  💠 JARVIS ready. Things to try next:                        ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo ""
+echo "On-demand commands (call explicitly):"
+[ -d "${SKILL_PATH}/on-demand" ] && for CMD_FILE in "${SKILL_PATH}/on-demand/"*.md; do
+  [ ! -e "${CMD_FILE}" ] && continue
+  CMD=$(basename "${CMD_FILE}" .md)
+  echo "  • jarvis ${CMD}"
+done
+echo ""
+
+if [ -n "${DETECTED_ARCH}" ] && [ "${DETECTED_ARCH}" != "unknown" ] && [ "${APPLY_ARCHETYPE}" != "1" ]; then
+  echo "📦 Archetype overlay for ${DETECTED_ARCH} is available but NOT applied."
+  echo "   Apply: jarvis evolve ${DETECTED_ARCH}  (or re-run adopt with --enable archetype-overlay)"
+  echo ""
+fi
+
+echo "🔍 Further discovery (optional, may cost tokens):"
+echo "  • jarvis self-audit       — what from JARVIS actually fires"
+echo "  • jarvis find <need>      — search for an external skill"
+echo "  • jarvis suggest          — improvement ideas for the project"
+echo ""
+
 echo "⚠️  Claude Code quirk: the permission system may strip settings.json hooks mid-session."
-echo "   Mitigation: restart your Claude Code session OR run this installer from outside Claude Code."
+echo "   Recommendation: restart your Claude Code session OR run the installer from a shell outside Claude Code."
