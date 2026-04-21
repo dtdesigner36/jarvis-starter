@@ -28,10 +28,16 @@ JARVIS runs the sequence:
 2. **Phase 0.5** — Dev-stage check (see `archive/bootstrap/brownfield-adopt.md`). If ≥2 dev-stage signals hit (≥10 commits, mature lockfile, real `src/`, existing `CLAUDE.md`, living `docs/`, running CI) — **default to Adopt mode**, not Start. User can override with `jarvis start --force`.
 3. **Phase 1** — Classification (see `archive/bootstrap/classification.md`)
 4. **Phase 2** — Proposal (stack + skills from registry + GitHub discovery via `on-demand/skill-discovery/`)
-5. **Phase 3** — Bootstrap (copies universal templates + archetype-specific overlays)
-6. **Phase 4** — Verification + Token audit
-7. **Phase 5** — Token optimization advice
-8. **Phase 6** — Activate persistent mode (core hooks)
+5. **Phase 3** — Bootstrap installer — **MUST run `bash {{SKILL_PATH}}/scripts/bootstrap.sh <archetype>`** via the Bash tool after the user confirms Phase 2 (`{{SKILL_PATH}}` is where the skill is installed). This script actually copies universal templates + archetype overlay, creates `.jarvis/`, installs hooks into `.claude/hooks/`, and **merges hooks into `.claude/settings.json` via `jq`**. Reading the script and describing what it would do is not acceptable — it must be run.
+6. **Phase 4** — Verification. **Mandatory checks:**
+   - `jq '.hooks.PostToolUse' .claude/settings.json` returns an array containing JARVIS hooks (post-edit + post-bash)
+   - `jq '.hooks.UserPromptSubmit' .claude/settings.json` returns an array containing the JARVIS hook (pre-prompt)
+   - `.claude/hooks/post-edit.sh`, `post-bash.sh`, `pre-prompt.sh` exist and are executable
+   - `.jarvis/state.md`, `.jarvis/memory.md`, `.jarvis/focus.md` are created
+   - `CLAUDE.md` and `wiki/HOME.md` are present
+   - If any check fails — **return to Phase 3 and re-run the installer**, do not continue
+7. **Phase 5** — Token audit + optimization advice (CLAUDE.md size, wiki file count, check `.gitignore` / `LICENSE` / `.env.example`)
+8. **Phase 6** — `git init` + initial commit (if `.git/` is missing) + offer to create a private GitHub repo via `gh repo create`. Write `bootstrap-complete: true` into `.jarvis/state.md`.
 
 ### 2. Adopt (existing project in active development)
 
@@ -119,10 +125,11 @@ If you type `jarvis start` in an existing project, JARVIS detects the dev-stage 
 
 1. **Do NOT suggest enabling school-mode** — user decides
 2. **Do NOT output status automatically at session start** — only on `jarvis status`
-3. **Core hooks work always** after bootstrap (can be disabled via `.jarvis/plugins.md`)
-4. **Wiki is mandatory infrastructure** in Start mode; in Adopt mode — respect existing docs, do not create parallel wiki/
-5. **Priority: quality > token optimization**
-6. **Brownfield-safe default**: when dev-stage is detected, default path is Adopt (gap-analysis, zero overwrite), not Start. See `archive/bootstrap/brownfield-adopt.md`.
+3. **Bootstrap = actually calling `scripts/bootstrap.sh`, not imitating it.** The only way to activate JARVIS hooks is to run `bash {{SKILL_PATH}}/scripts/bootstrap.sh <archetype>` via the Bash tool in Phase 3. Describing "what the installer would do" or manually creating individual files is not acceptable — the hooks must actually end up in `.claude/settings.json`. If Phase 4 verification doesn't find the hooks — the installer didn't run, repeat Phase 3.
+4. **Core hooks work always** after bootstrap (can be disabled via `.jarvis/plugins.md`)
+5. **Wiki is mandatory infrastructure** in Start mode; in Adopt mode — respect existing docs, do not create parallel wiki/
+6. **Priority: quality > token optimization**
+7. **Brownfield-safe default**: when dev-stage is detected, default path is Adopt (gap-analysis, zero overwrite), not Start. See `archive/bootstrap/brownfield-adopt.md`.
 
 ## File architecture
 

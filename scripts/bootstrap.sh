@@ -186,15 +186,59 @@ if [ -d "${SKILL_PATH}/archive/archetypes/tier1/${ARCHETYPE}" ]; then
   fi
 fi
 
-# ─── 7. settings.json (merge hooks if exists) ────────────────────
+# ─── 7. settings.json (real merge) ───────────────────────────────
+SETTINGS_TMPL="${UNIVERSAL}/settings.json.rendered.tmp"
+cp "${UNIVERSAL}/settings.json" "${SETTINGS_TMPL}"
+sed -i '' "s|{{PROJECT_ROOT}}|$(pwd)|g" "${SETTINGS_TMPL}" 2>/dev/null || sed -i "s|{{PROJECT_ROOT}}|$(pwd)|g" "${SETTINGS_TMPL}"
+
 if [ ! -f .claude/settings.json ]; then
-  cp "${UNIVERSAL}/settings.json" .claude/settings.json
-  sed -i '' "s|{{PROJECT_ROOT}}|$(pwd)|g" .claude/settings.json 2>/dev/null || sed -i "s|{{PROJECT_ROOT}}|$(pwd)|g" .claude/settings.json
+  # Fresh install — just move the rendered template
+  mv "${SETTINGS_TMPL}" .claude/settings.json
+  echo "  ✅ .claude/settings.json created with all JARVIS hooks"
 else
-  echo "  ⚠️ .claude/settings.json exists — manually verify the hooks section:"
-  echo "      template at: ${UNIVERSAL}/settings.json"
-  echo "      add hooks there if missing"
+  # Merge: keep user config, add missing JARVIS hooks
+  if command -v jq >/dev/null 2>&1; then
+    cp .claude/settings.json .claude/settings.json.pre-jarvis.bak
+    echo "  → backup: .claude/settings.json.pre-jarvis.bak"
+
+    # Merge hooks via jq: user hooks stay, JARVIS hooks added if missing
+    jq -s '
+      .[0] as $user | .[1] as $jarvis |
+      $user * {
+        hooks: (
+          ($user.hooks // {}) as $uh |
+          ($jarvis.hooks // {}) as $jh |
+          ($uh | to_entries) as $ue |
+          ($jh | to_entries) as $je |
+          (($ue + $je) | group_by(.key) | map({
+            key: .[0].key,
+            value: (map(.value) | add | unique_by(
+              (.matcher // "") + "::" + ((.hooks // []) | map(.command // "") | join(","))
+            ))
+          })) | from_entries
+        )
+      }
+    ' .claude/settings.json "${SETTINGS_TMPL}" > .claude/settings.json.new
+
+    if [ -s .claude/settings.json.new ]; then
+      mv .claude/settings.json.new .claude/settings.json
+      rm -f "${SETTINGS_TMPL}"
+      echo "  ✅ .claude/settings.json — JARVIS hooks merged (user config preserved)"
+    else
+      rm -f .claude/settings.json.new "${SETTINGS_TMPL}"
+      echo "  ❌ jq merge failed — settings.json unchanged, backup at .pre-jarvis.bak"
+      echo "      Manual merge: template at ${UNIVERSAL}/settings.json"
+    fi
+  else
+    echo "  ⚠️ jq not found — automatic merge not possible"
+    echo "      Manual merge: add hooks from ${SETTINGS_TMPL} to .claude/settings.json"
+    echo "      (or install jq: brew install jq / apt install jq)"
+  fi
 fi
+
+# Verification: what actually got installed
+HOOKS_COUNT=$(jq -r '[.hooks | to_entries[] | .value[] | .hooks[]?] | length' .claude/settings.json 2>/dev/null || echo "0")
+echo "  ℹ️ JARVIS hooks in settings.json: ${HOOKS_COUNT}"
 
 # ─── 8. Record bootstrap in timeline ─────────────────────────────
 cat >> .jarvis/timeline.md << EOF
