@@ -130,6 +130,17 @@ If you type `jarvis start` in an existing project, JARVIS detects the dev-stage 
 5. **Wiki is mandatory infrastructure** in Start mode; in Adopt mode — respect existing docs, do not create parallel wiki/
 6. **Priority: quality > token optimization**
 7. **Brownfield-safe default**: when dev-stage is detected, default path is Adopt (gap-analysis, zero overwrite), not Start. See `archive/bootstrap/brownfield-adopt.md`.
+8. **ADR moment = MANDATORY `jarvis decide`.** On any choice between 2+ alternatives in the categories below, the model must first run the `decide` flow (see `on-demand/decide.md`) and record the result in `wiki/Decisions/` or `wiki/Architecture/`, and only then proceed with implementation. Trigger categories:
+   - **Library choice** (aiogram vs python-telegram-bot, Prisma vs Drizzle, Express vs NestJS, ...)
+   - **Storage choice** (Redis vs in-memory vs DB, SQLite vs PostgreSQL, JSON vs YAML)
+   - **Architectural pattern** (monorepo vs polyrepo, event-driven vs sync, REST vs GraphQL vs gRPC)
+   - **Interaction protocol** (webhook vs polling, WebSocket vs SSE)
+   - **Stack / runtime change** (Python 3.11 → 3.12, Node → Bun, ...)
+   - **Significant architecture refactor** (monolith split, framework swap)
+
+   Exceptions — trivial edits that don't create irreversible decisions (rename a variable, add a log, cosmetics). When in doubt — call `decide` rather than skip.
+
+   If the `pre-prompt.sh` hook detects ADR signals in the prompt, it injects a reminder "this is an ADR moment — call `jarvis decide`". The model must not ignore such a reminder.
 
 ## File architecture
 

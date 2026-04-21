@@ -97,6 +97,19 @@ UNIVERSAL="${SKILL_PATH}/archive/templates/universal"
 # Wiki HOME — only if missing
 if [ ! -f wiki/HOME.md ]; then
   cp "${UNIVERSAL}/wiki/HOME.md.template" wiki/HOME.md
+
+  # Substitute known values in HOME.md
+  PROJECT_NAME=$(basename "$(pwd)")
+  ARCHETYPES_STR="${ARCHETYPE}${SECONDARY:+ + $SECONDARY}"
+  sed -i '' "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" wiki/HOME.md 2>/dev/null || sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" wiki/HOME.md
+  sed -i '' "s|{{ARCHETYPES}}|${ARCHETYPES_STR}|g" wiki/HOME.md 2>/dev/null || sed -i "s|{{ARCHETYPES}}|${ARCHETYPES_STR}|g" wiki/HOME.md
+  # What bootstrap doesn't know — mark as TODO so Claude sees it and fills in
+  sed -i '' "s|{{PROJECT_DESCRIPTION}}|<!-- TODO: short project description -->|g" wiki/HOME.md 2>/dev/null || sed -i "s|{{PROJECT_DESCRIPTION}}|<!-- TODO: short project description -->|g" wiki/HOME.md
+  sed -i '' "s|{{STACK}}|<!-- TODO: stack from Phase 1 classification -->|g" wiki/HOME.md 2>/dev/null || sed -i "s|{{STACK}}|<!-- TODO: stack from Phase 1 classification -->|g" wiki/HOME.md
+  # List placeholders — clear (dataview picks up files as they appear)
+  sed -i '' "s|{{ARCHETYPE_CANVASES}}||g" wiki/HOME.md 2>/dev/null || sed -i "s|{{ARCHETYPE_CANVASES}}||g" wiki/HOME.md
+  sed -i '' "s|{{SYSTEMS_LIST}}||g" wiki/HOME.md 2>/dev/null || sed -i "s|{{SYSTEMS_LIST}}||g" wiki/HOME.md
+  sed -i '' "s|{{ARCHITECTURE_LIST}}||g" wiki/HOME.md 2>/dev/null || sed -i "s|{{ARCHITECTURE_LIST}}||g" wiki/HOME.md
 fi
 
 if [ ! -f wiki/Devlog/README.md ]; then
@@ -112,13 +125,40 @@ if [ ! -f wiki/Architecture/_template.md ]; then
 fi
 
 # ─── 3. CLAUDE.md (merge if exists) ───────────────────────────────
+# Pre-render the base template with empty placeholder-sections removed
+CLAUDE_RENDERED="${UNIVERSAL}/CLAUDE.md.base.rendered.tmp"
+cp "${UNIVERSAL}/CLAUDE.md.base" "${CLAUDE_RENDERED}"
+python3 - "${CLAUDE_RENDERED}" <<'PY'
+import re, sys
+path = sys.argv[1]
+content = open(path, encoding="utf-8").read()
+pattern = re.compile(r"^## [^\n]* changes\n\{\{[A-Z_]+_RULES\}\}\n+", re.MULTILINE)
+content = pattern.sub("", content)
+open(path, "w", encoding="utf-8").write(content)
+PY
+
+# Idempotency marker — HTML comment, doesn't affect rendering
+CLAUDE_MARKER="<!-- jarvis-starter-bootstrap -->"
+
 if [ ! -f CLAUDE.md ]; then
-  cp "${UNIVERSAL}/CLAUDE.md.base" CLAUDE.md
+  # Fresh install: marker + rendered base
+  echo "${CLAUDE_MARKER}" > CLAUDE.md
+  cat "${CLAUDE_RENDERED}" >> CLAUDE.md
+  rm -f "${CLAUDE_RENDERED}"
+elif grep -qF "${CLAUDE_MARKER}" CLAUDE.md; then
+  # Idempotency: bootstrap already ran, skip append
+  rm -f "${CLAUDE_RENDERED}"
+  echo "  ℹ️ CLAUDE.md already contains the JARVIS marker — append skipped (idempotent re-run)"
 else
-  echo "" >> CLAUDE.md
-  echo "# JARVIS-Starter (appended by bootstrap)" >> CLAUDE.md
-  echo "" >> CLAUDE.md
-  cat "${UNIVERSAL}/CLAUDE.md.base" >> CLAUDE.md
+  # Brownfield merge: append JARVIS section with marker
+  {
+    echo ""
+    echo "${CLAUDE_MARKER}"
+    echo "# JARVIS-Starter (appended by bootstrap)"
+    echo ""
+    cat "${CLAUDE_RENDERED}"
+  } >> CLAUDE.md
+  rm -f "${CLAUDE_RENDERED}"
 fi
 
 # ─── 4. Hooks (merge if exists) ───────────────────────────────────
