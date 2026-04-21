@@ -15,21 +15,26 @@ if [ -f ".jarvis/plugins.md" ] && grep -q "security-watch: off" ".jarvis/plugins
   exit 0
 fi
 
+FIRED=0
+
 # ─── .env created/edited → check .gitignore ───────────────────────
 if [ -n "$FILE" ] && echo "$FILE" | grep -qE "\.env(\.[a-z]+)?$" && ! echo "$FILE" | grep -qE "\.env\.example"; then
   # Check .gitignore existence and .env pattern
   if [ ! -f ".gitignore" ]; then
     echo "⚠️ JARVIS SECURITY: .env created but .gitignore is missing — create it immediately!"
     echo "  echo '.env' >> .gitignore && echo '.env.local' >> .gitignore"
+    FIRED=1
   elif ! grep -qE "^\.env$|^\.env\*|^\*\.env|^\.env\.local" ".gitignore" 2>/dev/null; then
     echo "⚠️ JARVIS SECURITY: .env is not in .gitignore! Add:"
     echo "  echo '.env' >> .gitignore"
     echo "  echo '.env.local' >> .gitignore"
+    FIRED=1
   fi
 
   # Suggest creating .env.example if missing
   if [ ! -f ".env.example" ]; then
     echo "💡 JARVIS: create .env.example — to document required variables"
+    FIRED=1
   fi
 fi
 
@@ -38,6 +43,7 @@ if [ "$TOOL" = "Bash" ] && echo "$CMD" | grep -qE "git add .*\.env(\s|$)"; then
   echo "🚨 JARVIS SECURITY: YOU'RE ADDING .env TO GIT! Undo:"
   echo "  git reset HEAD .env"
   echo "  echo '.env' >> .gitignore"
+  FIRED=1
 fi
 
 # ─── git commit → verify staging has no .env ──────────────────────
@@ -47,7 +53,14 @@ if [ "$TOOL" = "Bash" ] && echo "$CMD" | grep -qE "git commit"; then
     echo "🚨 JARVIS SECURITY: .env files in staging! Remove before commit:"
     echo "$STAGED" | sed 's/^/  • /'
     echo "  git reset HEAD <file>"
+    FIRED=1
   fi
+fi
+
+# usage-log
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "${FIRED}" = "1" ]; then
+  bash "${SCRIPT_DIR}/../usage-log.sh" security-watch FIRED "check=gitignore" 2>/dev/null || true
 fi
 
 exit 0

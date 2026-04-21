@@ -94,6 +94,10 @@ fi
 mkdir -p .jarvis
 echo "$HASH" >> "$TODAY_FILE"
 
+# usage-log — for jarvis self-audit
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "${SCRIPT_DIR}/../usage-log.sh" adr-detector FIRED "hash=${HASH}" 2>/dev/null || true
+
 cat <<'EOF'
 
 💠 JARVIS: looks like an ADR moment (choice between alternatives).

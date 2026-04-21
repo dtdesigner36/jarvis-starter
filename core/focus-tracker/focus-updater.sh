@@ -56,4 +56,8 @@ TMP=$(mktemp)
 
 mv "$TMP" "$FOCUS_FILE"
 
+# usage-log
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "${SCRIPT_DIR}/../usage-log.sh" focus-tracker TRACKED "area=${AREA}" 2>/dev/null || true
+
 exit 0

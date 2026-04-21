@@ -253,4 +253,8 @@ EOF
   fi
 fi
 
+# usage-log
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "${SCRIPT_DIR}/../usage-log.sh" task-routing FIRED "class=${CLASS}" 2>/dev/null || true
+
 exit 0

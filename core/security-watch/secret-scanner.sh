@@ -80,10 +80,12 @@ if grep -qE "BEGIN (RSA |DSA |EC )?PRIVATE KEY" "$FILE" 2>/dev/null; then
 fi
 
 # ─── Output if warnings exist ─────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "$WARNINGS" ]; then
   echo "⚠️ JARVIS SECURITY: possible secret in $(basename "$FILE"):"
   echo -e "$WARNINGS" | head -3
   echo "  Check and move to .env (+ make sure .env is in .gitignore)"
+  bash "${SCRIPT_DIR}/../usage-log.sh" security-watch FIRED "check=secret-scanner" 2>/dev/null || true
 fi
 
 exit 0

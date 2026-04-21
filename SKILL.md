@@ -2,7 +2,7 @@
 name: jarvis-starter
 description: J.A.R.V.I.S. for your Claude Code project. On start — bootstrap with archetype classification, skill selection, wiki setup. For existing projects — soft adopt via gap analysis (installs only missing features, respects existing config). After start/adopt — quiet persistent assistant via hooks that maintains wiki, recommends model/plan-mode for tasks, surfaces existing solutions, tracks project evolution. Built for vibe-coders. Bonus optional school-mode plugin for those who want to learn.
 user-invocable: true
-argument-hint: "start <description> | adopt | status | find <need> | evolve | decide | suggest | docs | audit | remember | school"
+argument-hint: "start <description> | adopt | status | find <need> | evolve | decide | suggest | docs | audit | self-audit | remember | school"
 ---
 
 # JARVIS Starter — persistent project assistant
@@ -83,7 +83,8 @@ JARVIS lives in `.jarvis/` and works through core hooks:
 - `jarvis decide "<q>"` — help with an architectural decision
 - `jarvis suggest` — quality improvement suggestions
 - `jarvis docs` — wiki freshness check
-- `jarvis audit` — comprehensive audit
+- `jarvis audit` — comprehensive audit of your **project** (wiki/tokens/deps)
+- `jarvis self-audit` — audit of **JARVIS itself**: which hooks fired, which on-demand commands you haven't tried, which archetype overlays are available
 - `jarvis security` — security audit
 - `jarvis route "<task>"` — manually classify task complexity
 

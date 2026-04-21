@@ -15,8 +15,9 @@ if [ -f ".jarvis/plugins.md" ] && grep -q "memory-recall: off" ".jarvis/plugins.
   exit 0
 fi
 
-# Minimum length — don't trigger on tiny edits
-if [ ${#PROMPT} -lt 30 ]; then
+# Minimum length — don't trigger on tiny edits. 12 chars is enough for "supabase bug"
+# (was 30, but that cut short meaningful queries — retest2 feedback)
+if [ ${#PROMPT} -lt 12 ]; then
   exit 0
 fi
 
@@ -67,6 +68,7 @@ if [ -d "wiki/Systems" ]; then
 fi
 
 # ─── Output if hits exist ─────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "$MEMORY_HITS" ] || [ -n "$WIKI_HITS" ]; then
   echo "💠 JARVIS: found that you've already solved something similar:"
 
@@ -79,6 +81,9 @@ if [ -n "$MEMORY_HITS" ] || [ -n "$WIKI_HITS" ]; then
   fi
 
   echo "  (don't reinvent — use what exists)"
+  bash "${SCRIPT_DIR}/../usage-log.sh" memory-recall HIT 2>/dev/null || true
+else
+  bash "${SCRIPT_DIR}/../usage-log.sh" memory-recall NO-MATCH 2>/dev/null || true
 fi
 
 exit 0
