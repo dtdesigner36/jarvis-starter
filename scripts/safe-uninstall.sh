@@ -35,9 +35,14 @@ mkdir -p "${BACKUP_DIR}"
 for f in CLAUDE.md .claude/settings.json; do
   [ -f "$f" ] && cp "$f" "${BACKUP_DIR}/$(basename "$f")"
 done
-echo "→ Backups in ${BACKUP_DIR}/"
+# Backup .jarvis/ — memory.md / state.md / usage-log.md may contain
+# valuable user context (retest v0.2.1 feedback).
+if [ -d .jarvis ]; then
+  cp -R .jarvis "${BACKUP_DIR}/.jarvis"
+fi
+echo "→ Backups in ${BACKUP_DIR}/ (incl. .jarvis/)"
 
-# 2. .jarvis/ — entire dir
+# 2. .jarvis/ — entire dir (backup already taken)
 if [ -d .jarvis ]; then
   rm -rf .jarvis/
   echo "→ .jarvis/ removed"

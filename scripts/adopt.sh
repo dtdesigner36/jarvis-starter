@@ -102,10 +102,17 @@ fi
 DETECTED_STACK=""
 DETECTED_ARCH=""
 
+# nullglob + dotglob not reliable in bash 3.2 POSIX mode — explicit expansion.
 PKG_FILES=""
 [ -f package.json ] && PKG_FILES="package.json"
-for sub in app apps/*/  packages/*/  client/  server/  web/  api/; do
+# Static subdirs with trailing slash (earlier bug: `app` without slash yielded `apppackage.json`)
+for sub in app/ client/ server/ web/ api/; do
   [ -f "${sub}package.json" ] && PKG_FILES="${PKG_FILES} ${sub}package.json"
+done
+# Glob patterns for monorepos (apps/*, packages/*) — verify expansion succeeded
+for pattern in "apps/"*"/" "packages/"*"/"; do
+  [ -d "${pattern}" ] || continue  # glob didn't expand — skip
+  [ -f "${pattern}package.json" ] && PKG_FILES="${PKG_FILES} ${pattern}package.json"
 done
 
 if [ -n "${PKG_FILES}" ]; then
@@ -167,29 +174,50 @@ PY
 fi
 
 if [ -z "${DETECTED_STACK}" ] && ([ -f pyproject.toml ] || [ -f requirements.txt ]); then
-  PY_DEPS=$(cat pyproject.toml requirements.txt 2>/dev/null)
+  # Bug fix (retest v0.2.1): `set -euo pipefail` + `&& chain` used to die on the
+  # first grep that didn't find a dep. Replaced with explicit `if` statements.
+  PY_DEPS=$(cat pyproject.toml requirements.txt 2>/dev/null || true)
   PY_TAGS=""
   PY_ARCH=""
-  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?aiogram" && PY_TAGS="${PY_TAGS},aiogram" && PY_ARCH="telegram-bot"
-  echo "${PY_DEPS}" | grep -iqE "python-telegram-bot" && PY_TAGS="${PY_TAGS},python-telegram-bot" && PY_ARCH="telegram-bot"
-  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?fastapi" && PY_TAGS="${PY_TAGS},fastapi" && [ -z "${PY_ARCH}" ] && PY_ARCH="web-api"
-  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?django" && PY_TAGS="${PY_TAGS},django" && [ -z "${PY_ARCH}" ] && PY_ARCH="web-app"
-  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?flask" && PY_TAGS="${PY_TAGS},flask" && [ -z "${PY_ARCH}" ] && PY_ARCH="web-api"
-  echo "${PY_DEPS}" | grep -iqE "scrapy|beautifulsoup4" && PY_TAGS="${PY_TAGS},scraping" && [ -z "${PY_ARCH}" ] && PY_ARCH="parser"
-  echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?anthropic" && PY_TAGS="${PY_TAGS},anthropic" && [ -z "${PY_ARCH}" ] && PY_ARCH="llm-agent"
-  echo "${PY_DEPS}" | grep -iqE "langchain" && PY_TAGS="${PY_TAGS},langchain"
+  if echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?aiogram"; then
+    PY_TAGS="${PY_TAGS},aiogram"; PY_ARCH="${PY_ARCH:-telegram-bot}"
+  fi
+  if echo "${PY_DEPS}" | grep -iqE "python-telegram-bot"; then
+    PY_TAGS="${PY_TAGS},python-telegram-bot"; PY_ARCH="${PY_ARCH:-telegram-bot}"
+  fi
+  if echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?fastapi"; then
+    PY_TAGS="${PY_TAGS},fastapi"; PY_ARCH="${PY_ARCH:-web-api}"
+  fi
+  if echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?django"; then
+    PY_TAGS="${PY_TAGS},django"; PY_ARCH="${PY_ARCH:-web-app}"
+  fi
+  if echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?flask"; then
+    PY_TAGS="${PY_TAGS},flask"; PY_ARCH="${PY_ARCH:-web-api}"
+  fi
+  if echo "${PY_DEPS}" | grep -iqE "scrapy|beautifulsoup4"; then
+    PY_TAGS="${PY_TAGS},scraping"; PY_ARCH="${PY_ARCH:-parser}"
+  fi
+  if echo "${PY_DEPS}" | grep -iqE "^[[:space:]]*['\"]?anthropic"; then
+    PY_TAGS="${PY_TAGS},anthropic"; PY_ARCH="${PY_ARCH:-llm-agent}"
+  fi
+  if echo "${PY_DEPS}" | grep -iqE "langchain"; then
+    PY_TAGS="${PY_TAGS},langchain"
+  fi
   PY_TAGS="${PY_TAGS},python"
   DETECTED_STACK=$(echo "${PY_TAGS}" | sed 's/^,//' | tr ',' '\n' | sort -u | paste -sd ',' -)
   DETECTED_ARCH="${PY_ARCH}"
 fi
 
-if [ -n "${DETECTED_STACK}" ] || [ -n "${DETECTED_ARCH}" ]; then
-  echo "   ┌─ Detected stack/archetype:"
+echo "   ┌─ Detected stack/archetype:"
+if [ -n "${DETECTED_ARCH}" ] || [ -n "${DETECTED_STACK}" ]; then
   [ -n "${DETECTED_ARCH}" ] && echo "   │  • archetype: ${DETECTED_ARCH}"
   [ -n "${DETECTED_STACK}" ] && echo "   │  • stack: ${DETECTED_STACK}"
-  echo "   └─"
-  echo ""
+else
+  echo "   │  • stack: not detected (no package.json / pyproject.toml / requirements.txt)"
+  echo "   │    Skill-matcher and archetype-overlay sections will be hidden."
 fi
+echo "   └─"
+echo ""
 
 # ─── Phase B — Gap analysis ───────────────────────────────────────
 echo "💠 Phase B: gap analysis"
@@ -282,15 +310,21 @@ consider "security-watch" "${SW_SKIP}" ""
 echo "💠 Phase C: proposal"
 echo ""
 echo "   ┌─ Will install:"
+HAS_ANY_INSTALL=0
 for f in "${FEATURES_TO_INSTALL[@]:-}"; do
   [ -z "${f}" ] && continue
   echo "   │  ✓ ${f}"
+  HAS_ANY_INSTALL=1
 done
+[ "${HAS_ANY_INSTALL}" = "0" ] && echo "   │  (none — use --enable <feature> to install)"
 echo "   ├─ Will skip:"
+HAS_ANY_SKIP=0
 for f in "${FEATURES_SKIPPED[@]:-}"; do
   [ -z "${f}" ] && continue
   echo "   │  × ${f}  — $(skip_reason_for "${f}")"
+  HAS_ANY_SKIP=1
 done
+[ "${HAS_ANY_SKIP}" = "0" ] && echo "   │  (none — all gap checks passed)"
 echo "   └─"
 echo ""
 
@@ -475,10 +509,28 @@ EOF
   echo "   ✓ ${hook_file}"
 }
 
+# Defensive: if .claude/hooks/jarvis-*.sh files exist from prior adopts
+# but aren't in FEATURES_TO_INSTALL (e.g. user runs `adopt --enable
+# archetype-overlay` after a full install) — implicitly re-register them
+# so the settings.json merge stays additive.
+ALREADY_ON_DISK=""
+if [ -d .claude/hooks ]; then
+  for existing in .claude/hooks/jarvis-*.sh; do
+    [ ! -f "${existing}" ] && continue
+    existing_name=$(basename "${existing}" .sh | sed 's/^jarvis-//')
+    in_list=0
+    for f in "${FEATURES_TO_INSTALL[@]:-}"; do
+      [ "${f}" = "${existing_name}" ] && in_list=1 && break
+    done
+    [ "${in_list}" = "0" ] && ALREADY_ON_DISK="${ALREADY_ON_DISK} ${existing_name}"
+  done
+fi
+
 install_hooks_registration() {
   local tmpfile="${PROJECT_ROOT}/.claude/settings.json.jarvis-adopt.tmp"
+  local all_features="${FEATURES_TO_INSTALL[*]:-} ${ALREADY_ON_DISK}"
 
-  python3 - "${PROJECT_ROOT}" "${FEATURES_TO_INSTALL[*]:-}" > "${tmpfile}" <<'PY'
+  python3 - "${PROJECT_ROOT}" "${all_features}" > "${tmpfile}" <<'PY'
 import json, sys
 project_root, features = sys.argv[1], sys.argv[2].split()
 
