@@ -6,6 +6,9 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ### Fixed
 
+- **safe-uninstall.sh: backup dir visibility (UX).** Backup dir was named `.jarvis-uninstall-backup-<TS>` with a leading dot, so `ls` without `-a` hid it — reviewers thought `.jarvis/` wasn't being backed up. Renamed to `jarvis-uninstall-backup-<TS>` and added an explicit `find` listing of backed-up files at the end of the uninstall output. The `.jarvis/` backup itself was there all along; fix is purely about making it visible.
+- **ADR detector: Russian "нужен ли X или Y" pattern.** The `стоит ли X или Y` pattern existed, but the natural RU phrasing `нужен/нужна/нужно/нужны ли X или Y` was missing. Added regex — 4/4 new variants now fire correctly.
+- **security-watch: supabase/* paths + service_role detection.** Regex didn't match `supabase/server.ts`, `supabase/admin.ts`, `supabase/service-role.ts` — for Supabase projects these are the most security-critical files (where `SUPABASE_SERVICE_ROLE_KEY` lives). Added `supabase/(server|client|admin|service)` and `service[-_]role` to the trigger list.
 - **adopt.sh: Next.js monorepo (`app/`) stack detection.** Previously `app` in the subdir list missed the trailing slash, producing `apppackage.json` lookups. Now `app/` — Next.js app-dir layouts detect correctly.
 - **adopt.sh: globbing for `apps/*/` and `packages/*/`.** Unexpanded globs on projects without those folders stayed as literals and caused false file tests. Fixed with explicit glob-existence check.
 - **adopt.sh: `set -euo pipefail` + `&& chain` in Python-stack block.** First grep that found nothing aborted the whole script. Replaced with explicit `if` statements — Python projects with partial dep coverage (e.g. only aiogram) now finish adopt.

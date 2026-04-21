@@ -30,7 +30,7 @@ fi
 
 # 1. Backup critical files BEFORE any edit
 TS=$(date +%Y%m%d-%H%M%S)
-BACKUP_DIR=".jarvis-uninstall-backup-${TS}"
+BACKUP_DIR="jarvis-uninstall-backup-${TS}"
 mkdir -p "${BACKUP_DIR}"
 for f in CLAUDE.md .claude/settings.json; do
   [ -f "$f" ] && cp "$f" "${BACKUP_DIR}/$(basename "$f")"
@@ -119,7 +119,10 @@ if [ -d .agents/skills/jarvis-starter ]; then
 fi
 
 echo ""
-echo "✅ Uninstall complete. Restore from ${BACKUP_DIR}/ if anything went wrong."
+echo "✅ Uninstall complete. Backup at ${BACKUP_DIR}/ contains:"
+find "${BACKUP_DIR}" -type f 2>/dev/null | sed "s|^${BACKUP_DIR}/|  - |" | head -20
+EXTRA=$(find "${BACKUP_DIR}" -type f 2>/dev/null | wc -l | tr -d ' ')
+[ "${EXTRA}" -gt 20 ] && echo "  ... and $((EXTRA - 20)) more (full: find ${BACKUP_DIR} -type f)"
 echo ""
 echo "To reinstall:"
 echo "  npx skills add dtdesigner36/jarvis-starter --yes"

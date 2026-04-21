@@ -57,8 +57,8 @@ if [ "$TOOL" = "Bash" ] && echo "$CMD" | grep -qE "git commit"; then
   fi
 fi
 
-# ─── Edit on auth/RLS/middleware/migration files → suggest jarvis security ─
-if [ -n "$FILE" ] && echo "$FILE" | grep -qE "(auth|rls|middleware|policies|policy|migrations?/)" && ! echo "$FILE" | grep -qE "(test|spec|node_modules|\.next/)"; then
+# ─── Edit on auth/RLS/middleware/migration/supabase files → suggest jarvis security ─
+if [ -n "$FILE" ] && echo "$FILE" | grep -qE "(auth|rls|middleware|policies|policy|migrations?/|supabase/(server|client|admin|service)|service[-_]role)" && ! echo "$FILE" | grep -qE "(test|spec|node_modules|\.next/)"; then
   LAST_SEC_HINT=".jarvis/last-security-hint"
   NOW_TS=$(date +%s)
   LAST_TS=$(stat -f "%m" "${LAST_SEC_HINT}" 2>/dev/null || echo 0)
