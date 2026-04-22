@@ -191,14 +191,14 @@ existing-infra-respected:
 
 - **User says `pick-features` and enables a skipped one**: warn about potential overlap, still install if confirmed. Record in `state.md` as `forced: true`.
 - **Project has existing `.jarvis/` from prior run**: adopt becomes a diff — show what's new in gap matrix vs. current `enabled-features.md`, only propose the delta.
-- **Monorepo**: run gap analysis per workspace (`apps/*`, `packages/*`). Ask user whether to adopt at root or per-workspace. Important: the lockfile-maturity check must scan subfolders, not just root (discovered in the onlycalculated test — `app/package-lock.json` was missed by root-only detection).
+- **Monorepo**: run gap analysis per workspace (`apps/*`, `packages/*`). Ask user whether to adopt at root or per-workspace. Important: the lockfile-maturity check must scan subfolders, not just root (discovered during real-project testing — `app/package-lock.json` in a Next.js monorepo layout was missed by root-only detection).
 - **Conflict: user approved a feature but its hook name collides with existing file**: stop, show error, ask for rename or skip. Never overwrite.
 
 ## 8. Claude Code runtime quirks
 
 ### ⚠️ `.claude/settings.json` can be rewritten by the permission system mid-session
 
-Observed during the onlycalculated test: if adopt install runs **inside a live Claude Code session**, the permission-add mechanism (when the user approves a new Bash pattern) can rewrite `settings.json` and strip the `hooks` block. Installed hooks look present in filesystem, but the runtime no longer fires them.
+Observed during real-project testing: if adopt install runs **inside a live Claude Code session**, the permission-add mechanism (when the user approves a new Bash pattern) can rewrite `settings.json` and strip the `hooks` block. Installed hooks look present in filesystem, but the runtime no longer fires them.
 
 **Mitigations (decreasing reliability):**
 

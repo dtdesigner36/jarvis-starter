@@ -4,6 +4,10 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-22
+
+The "JARVIS starts paying for itself" release. 15 commits since v0.1.0. Across six iterated real-project retests (Next.js + Supabase web app and a Python aiogram Telegram bot), the useful-share climbed from 20–25% (first real-use) to ~88% (latest retest). Four architectural shifts define v0.2.0: (1) the installer actually installs, (2) JARVIS sees itself via `self-audit`, (3) a full Discovery Layer binds stack → relevant skills, (4) wiki stops being a reminder system and becomes an active owner.
+
 ### Added
 
 - **Context-triggered surfacing of `jarvis suggest` / `jarvis audit` / `jarvis find`.** r5 feedback noted that self-audit became "smart" but runtime hooks didn't surface these on-demand commands. Added:
@@ -77,5 +81,6 @@ First public release.
 
 Built on patterns from `@alinaqi/claude-bootstrap`, `@pbakaus/impeccable`, `@emilkowalski/skill`, `@leonxlnx/taste-skill`, `anthropics/skills`, `@wcpaxx/spec-kit-brownfield-extensions`, `@travisvn/awesome-claude-skills`. See [NOTICE.md](NOTICE.md) for full attribution.
 
-[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.1.0
