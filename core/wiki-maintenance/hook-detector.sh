@@ -113,6 +113,24 @@ if [ "${CURRENT}" -ge 30 ] && [ "${FIRED}" = "0" ]; then
   fi
 fi
 
+# Periodic suggestion: after 100 edits — hint at `jarvis suggest` / `audit`
+SUGGEST_COUNTER_FILE=".jarvis/suggest-counter"
+SUGGEST_CURRENT=$(cat "${SUGGEST_COUNTER_FILE}" 2>/dev/null || echo 0)
+SUGGEST_CURRENT=$((SUGGEST_CURRENT + 1))
+echo "${SUGGEST_CURRENT}" > "${SUGGEST_COUNTER_FILE}"
+if [ "${SUGGEST_CURRENT}" -ge 100 ] && [ "${FIRED}" = "0" ]; then
+  LAST_SUGGEST_HINT=".jarvis/last-suggest-hint"
+  NOW_TS=$(date +%s)
+  LAST_TS=$(stat -f "%m" "${LAST_SUGGEST_HINT}" 2>/dev/null || echo 0)
+  # No more often than once every 7 days
+  if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 7 ]; then
+    echo "💡 JARVIS: ${SUGGEST_CURRENT} edits without an audit. Try \`jarvis suggest\` or \`jarvis audit\` for a quality review."
+    touch "${LAST_SUGGEST_HINT}"
+    echo 0 > "${SUGGEST_COUNTER_FILE}"
+    FIRED=1
+  fi
+fi
+
 # usage-log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ "${FIRED}" = "1" ]; then

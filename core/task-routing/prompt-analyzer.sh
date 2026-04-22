@@ -145,6 +145,19 @@ case "$CLASS" in
     ;;
 esac
 
+# ─── Surface `jarvis find` on search-like prompts (before the trivial exit) ──
+# Anti-spam: once every 5 days.
+if echo "$PROMPT" | grep -qiE "(как (реализ|сделать|настроить)|library for|какая библиотека|чем сделать|инструмент для|какой инструмент|how to (implement|set up)|what library)"; then
+  LAST_FIND_HINT=".jarvis/last-find-hint"
+  NOW_TS=$(date +%s)
+  LAST_TS=$(stat -f "%m" "${LAST_FIND_HINT}" 2>/dev/null || echo 0)
+  if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 5 ]; then
+    echo ""
+    echo "💡 JARVIS: looks like you're searching for a solution. Try \`jarvis find <need>\` to search the registry / GitHub."
+    touch "${LAST_FIND_HINT}"
+  fi
+fi
+
 # ─── Trivial/Simple — silent (except plan→auto hint) ─────────────
 case "$CLASS" in
   "Trivial"|"Simple")
