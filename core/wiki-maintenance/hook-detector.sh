@@ -27,25 +27,42 @@ else
   echo "${CURRENT}" > "${COUNTER_FILE}"
 fi
 
-# ─── New module/feature created ───────────────────────────────────
-# Detect via Write tool on a file in a new folder src/modules/<name>/ or server/src/modules/<name>/
-if [ "$TOOL" = "Write" ]; then
-  # Extract potential system name
-  SYSTEM=""
-  if echo "$FILE" | grep -qE "(server/)?src/modules/([^/]+)/"; then
-    SYSTEM=$(echo "$FILE" | sed -E 's|.*src/modules/([^/]+)/.*|\1|')
-  elif echo "$FILE" | grep -qE "(client/)?src/features/([^/]+)/"; then
-    SYSTEM=$(echo "$FILE" | sed -E 's|.*src/features/([^/]+)/.*|\1|')
-  fi
+# ─── System detection by file path (module/feature) ──────────────
+SYSTEM=""
+MODULE_DIR=""
+if echo "$FILE" | grep -qE "(server/)?src/modules/([^/]+)/"; then
+  SYSTEM=$(echo "$FILE" | sed -E 's|.*src/modules/([^/]+)/.*|\1|')
+  MODULE_DIR=$(echo "$FILE" | sed -E 's|(.*src/modules/[^/]+)/.*|\1|')
+elif echo "$FILE" | grep -qE "(client/)?src/features/([^/]+)/"; then
+  SYSTEM=$(echo "$FILE" | sed -E 's|.*src/features/([^/]+)/.*|\1|')
+  MODULE_DIR=$(echo "$FILE" | sed -E 's|(.*src/features/[^/]+)/.*|\1|')
+fi
 
-  if [ -n "$SYSTEM" ] && [ ! -f "wiki/Systems/${SYSTEM}.md" ]; then
-    # Verify this is really a new module (count files in folder)
-    MODULE_DIR=$(dirname "$FILE")
-    FILES_IN_MODULE=$(find "$MODULE_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l)
-    if [ "$FILES_IN_MODULE" -le 3 ]; then
-      echo "💠 JARVIS: new system \`${SYSTEM}\`. Create wiki/Systems/${SYSTEM}.md? (jarvis new-system ${SYSTEM})"
-      FIRED=1
-    fi
+# ─── Resolve wiki-location for checks ─────────────────────────────
+SYSTEMS_DIR="wiki/Systems"
+if [ -f .jarvis/state.md ]; then
+  LOC=$(grep -E '^wiki-location:' .jarvis/state.md 2>/dev/null | sed 's/^wiki-location:[[:space:]]*//' | head -1)
+  [ -n "${LOC}" ] && SYSTEMS_DIR="${LOC%/}/Systems"
+  case "${LOC}" in
+    .jarvis/*|.jarvis) SYSTEMS_DIR=".jarvis/systems" ;;
+  esac
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ─── New module (Write) → ACTIVE OWNERSHIP: scaffold.sh ────────────
+if [ "$TOOL" = "Write" ] && [ -n "$SYSTEM" ] && [ ! -f "${SYSTEMS_DIR}/${SYSTEM}.md" ]; then
+  FILES_IN_MODULE=$(find "$(dirname "$FILE")" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$FILES_IN_MODULE" -le 3 ]; then
+    bash "${SCRIPT_DIR}/scaffold.sh" "${SYSTEM}" "${MODULE_DIR}" 2>&1 || true
+    FIRED=1
+  fi
+fi
+
+# ─── Edit in tracked module → live-update ─────────────────────────
+if [ "$TOOL" = "Edit" ] && [ -n "$SYSTEM" ] && [ -f "${SYSTEMS_DIR}/${SYSTEM}.md" ]; then
+  if ! grep -qE '^jarvis-managed:[[:space:]]*off' "${SYSTEMS_DIR}/${SYSTEM}.md" 2>/dev/null; then
+    bash "${SCRIPT_DIR}/live-update.sh" "${SYSTEM}" "${FILE}" 2>/dev/null || true
   fi
 fi
 

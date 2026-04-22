@@ -457,6 +457,17 @@ fi
 # ─── Phase D — Soft install ───────────────────────────────────────
 echo "💠 Phase D: soft install"
 
+# Namespace matrix for wiki-ownership (see brownfield-adopt.md):
+#   docs/ + wiki/ → wiki/ is JARVIS-owned (both coexist)
+#   docs/ only   → .jarvis/systems/ (do not create a parallel wiki)
+#   wiki/ only with content → wiki/ with marker-guard
+#   nothing → wiki/ (full ownership)
+WIKI_LOCATION="wiki"
+WIKI_OWNERSHIP="active"
+if [ "${HAS_DOCS}" = "1" ] && [ "${HAS_WIKI}" = "0" ]; then
+  WIKI_LOCATION=".jarvis"
+fi
+
 mkdir -p .jarvis
 [ -f .jarvis/state.md ] || cat > .jarvis/state.md <<EOF
 # JARVIS State
@@ -467,6 +478,9 @@ skill-path: ${SKILL_PATH}
 archetype-detected: ${DETECTED_ARCH:-unknown}
 archetype-applied: none
 stack: ${DETECTED_STACK:-unknown}
+wiki-ownership: ${WIKI_OWNERSHIP}
+wiki-location: ${WIKI_LOCATION}
+owned-files:
 EOF
 touch .jarvis/memory.md .jarvis/focus.md .jarvis/timeline.md
 if [ ! -f .jarvis/preferences.md ] && [ -f "${SKILL_PATH}/core/state/preferences.md.template" ]; then

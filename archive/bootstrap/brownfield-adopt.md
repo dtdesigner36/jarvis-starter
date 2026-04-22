@@ -133,11 +133,17 @@ Rules, hard-coded, no exceptions:
 2. **Hooks go into new files** named `.claude/hooks/jarvis-<feature>.sh`. Never append to existing hook files.
 3. **`CLAUDE.md` gets ONE line** max: `<!-- JARVIS context: see .jarvis/state.md -->`. No feature rules, no archetype overlay, no merge dump.
 4. **`settings.json`** — add only the JARVIS hook entries, preserve everything else. Use `jq` or structured merge, not append.
-5. **`wiki/` is created in Adopt only when the project has no documentation at all.** Rule:
+5. **Active wiki-ownership** (v0.2.2). JARVIS no longer just reminds "update the wiki" — it **actively maintains** `wiki/Systems/<X>.md`:
+   - On new module detection (`src/{modules,features}/<X>/` ≤3 files + Write event) → `scaffold.sh` creates a stub with YAML frontmatter (`jarvis-managed: scaffold`, `source-module`, `created`, `last-edited`) and sections TL;DR (user fills) + Files (auto-maintained) + Decisions (appended on `jarvis decide`) + Last edit (auto-updated).
+   - On Edit in a tracked module → `live-update.sh` updates `last-edited` YAML + `## Last edit` block + adds the file to `## Files`. Anti-spam: once every 10 minutes per-system.
+   - `state.md` contains `wiki-ownership: active|off`, `wiki-location: wiki|.jarvis`, `owned-files: [...]`.
+   - Opt-out levels: (a) `wiki-ownership: off` in `.jarvis/preferences.md` → passive behavior; (b) frontmatter `jarvis-managed: off` in a specific .md → hook skips; (c) `.jarvis/wiki-ignore` glob patterns to exclude modules.
+
+6. **`wiki/` is created in Adopt only when the project has no documentation at all.** Rule:
    - If `docs/` or an existing `wiki/` has content — JARVIS **does not** create `wiki/`, records location in `.jarvis/state.md` (`docs_location: docs/`)
    - If only `CHANGELOG.md` and/or a long `README.md` (>100 lines) — JARVIS asks the user "create `wiki/` for system notes?"
    - If none of the above — a **minimal `wiki/`** is created: `HOME.md` + `Devlog/README.md` + `Systems/_template.md`. Otherwise `memory-recall` and `wiki-maintenance` hooks are dead-by-construction (nothing to match against).
-6. **No archetype overlay** in adopt mode — user can run `jarvis evolve <archetype>` later if they want.
+7. **Archetype overlay in Adopt — auto-apply on confident detection** (v0.2.2, previously always opt-in). When ≥3 stack-tags are detected, the overlay is applied automatically. Escape hatches: `--no-archetype` flag, `archetype-overlay: never` in preferences, interactive `Y/n/never` prompt in a TTY.
 
 ### Install per feature
 

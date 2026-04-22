@@ -1,0 +1,27 @@
+---
+tags: [system]
+created: {{CREATED_DATE}}
+source-module: {{SOURCE_MODULE}}
+jarvis-managed: scaffold
+last-edited: {{LAST_EDITED}}
+---
+
+# {{SYSTEM_NAME}}
+
+## TL;DR
+<!-- TODO: 2-3 lines describing purpose. JARVIS created this stub when
+     you added a new module. Fill this in at the first opportunity. -->
+
+## Files
+{{FILES_LIST}}
+
+## Decisions
+{{DECISIONS_SECTION}}
+
+## Related
+<!-- links to wiki/Systems/X.md or wiki/Architecture/X.md -->
+
+---
+<!-- jarvis-managed-section:auto — this block is updated by the hook; don't edit manually -->
+## Last edit
+{{LAST_EDITED}} (auto-updated)
