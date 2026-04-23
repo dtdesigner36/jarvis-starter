@@ -243,7 +243,24 @@ fi
 # ─── 7. settings.json (real merge) ───────────────────────────────
 SETTINGS_TMPL="${UNIVERSAL}/settings.json.rendered.tmp"
 cp "${UNIVERSAL}/settings.json" "${SETTINGS_TMPL}"
-sed -i '' "s|{{PROJECT_ROOT}}|$(pwd)|g" "${SETTINGS_TMPL}" 2>/dev/null || sed -i "s|{{PROJECT_ROOT}}|$(pwd)|g" "${SETTINGS_TMPL}"
+# Render {{PROJECT_ROOT}} and shell-quote the command path so project dirs with
+# spaces or shell metacharacters don't break hook execution.
+python3 - "${SETTINGS_TMPL}" "$(pwd)" <<'PY'
+import json, shlex, sys
+tmpl, project_root = sys.argv[1], sys.argv[2]
+with open(tmpl, encoding="utf-8") as f:
+    data = json.load(f)
+for event in (data.get("hooks") or {}).values():
+    for group in event:
+        for hook in group.get("hooks", []):
+            cmd = (hook.get("command") or "").replace("{{PROJECT_ROOT}}", project_root)
+            if cmd.startswith("bash "):
+                hook["command"] = "bash " + shlex.quote(cmd[5:])
+            else:
+                hook["command"] = cmd
+with open(tmpl, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+PY
 
 if [ ! -f .claude/settings.json ]; then
   # Fresh install — just move the rendered template

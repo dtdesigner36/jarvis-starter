@@ -630,13 +630,17 @@ install_hooks_registration() {
   local all_features="${FEATURES_TO_INSTALL[*]:-} ${ALREADY_ON_DISK}"
 
   python3 - "${PROJECT_ROOT}" "${all_features}" > "${tmpfile}" <<'PY'
-import json, sys
+import json, os, shlex, sys
 project_root, features = sys.argv[1], sys.argv[2].split()
 
+def _cmd(script):
+    # shlex.quote handles spaces and shell metacharacters in the project path
+    return "bash " + shlex.quote(os.path.join(project_root, ".claude", "hooks", script))
+
 def pt(matcher, cmd):
-    return {"matcher": matcher, "hooks": [{"type": "command", "command": f"bash {project_root}/.claude/hooks/{cmd}"}]}
+    return {"matcher": matcher, "hooks": [{"type": "command", "command": _cmd(cmd)}]}
 def ups(cmd):
-    return {"hooks": [{"type": "command", "command": f"bash {project_root}/.claude/hooks/{cmd}"}]}
+    return {"hooks": [{"type": "command", "command": _cmd(cmd)}]}
 
 hooks = {"PostToolUse": [], "UserPromptSubmit": []}
 for f in features:
