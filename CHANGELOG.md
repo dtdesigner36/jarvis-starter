@@ -4,6 +4,24 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-04-23
+
+Trust hotfix driven by a real-user review. A developer ran `npx skills add` + `jarvis start` on a fresh Node/Express + D3 project and hit two failure modes that all four prior codex audit passes and 21-step E2E had missed. This release closes both plus minimum degraded-mode visibility.
+
+### Fixed
+
+- **Bootstrap merge is now loudly verified on disk.** Previously the final line read `jq '[.hooks | to_entries[] | .value[] | .hooks[]?] | length'` and printed "JARVIS hooks in settings.json: N" — but the count was computed from the file as-merged, and an IDE (Claude Code / VSCode extension) rewriting `settings.json` on a permission-grant could wipe the `.hooks` block between the read and any subsequent action. Users saw a green count while the final on-disk state was broken. The bootstrap now asserts **both** `.hooks.PostToolUse` and `.hooks.UserPromptSubmit` are non-empty arrays on disk, prints PT/UP counts, explicitly warns about the known IDE quirk, and exits non-zero with recovery instructions if validation fails.
+- **Bootstrap `jq` merge hardened against unusual `settings.json` shapes.** The merge now defensively handles `.hooks` missing, null, or containing null/non-array event values (which some IDE rewrites leave behind). Empty `$user.hooks` no longer produces an `add`-of-empty-list failure (`add // []` fallback). Non-array event values are filtered out before grouping.
+- **`.gitignore` template ships with JARVIS artifact rules + idempotent merge step.** `npx skills add dtdesigner36/jarvis-starter` drops the entire skill at `.agents/skills/jarvis-starter/` in the target project. Without a pre-placed `.gitignore`, `git init && git add -A` swept hundreds of skill template files into the user's first commit. Bootstrap and adopt now both merge `archive/templates/universal/.gitignore.template` (covering `.agents/`, `skills-lock.json`, `.pre-jarvis*.bak`, `jarvis-uninstall-backup-*/`) into the project's `.gitignore` on first run — idempotent on re-run.
+
+### Added
+
+- **`jarvis self-audit` reports hook health at the top of its output.** The IDE wipe is a known quirk documented in `archive/bootstrap/brownfield-adopt.md §8`, but until v0.2.4 the product had no runtime signal when the wipe had already happened. `core/self-audit/report.sh` now reads `.claude/settings.json` first; if `.hooks.PostToolUse` or `.hooks.UserPromptSubmit` are empty, it prints `❌ Hook health: DEGRADED` with a concrete recovery command (restore from `.pre-jarvis.bak` + re-bootstrap from an external shell). Healthy installs show `✅ Hook health: PostToolUse=N UserPromptSubmit=M`.
+
+### Not in this release
+
+Full self-heal automation (snapshot + pre-prompt restoration) is v0.3 scope, with hook-health/observability promoted to a top-priority v0.3 item. This release is the minimum that (a) stops the installer from lying about a successful merge and (b) gives users an obvious command to check if their hooks are still alive.
+
 ## [0.2.3] — 2026-04-23
 
 Micro-polish from the v0.2.2 re-audit. Three small fixes so the 0.2.x line can be declared closed.
@@ -145,7 +163,8 @@ First public release.
 
 Built on patterns from `@alinaqi/claude-bootstrap`, `@pbakaus/impeccable`, `@emilkowalski/skill`, `@leonxlnx/taste-skill`, `anthropics/skills`, `@wcpaxx/spec-kit-brownfield-extensions`, `@travisvn/awesome-claude-skills`. See [NOTICE.md](NOTICE.md) for full attribution.
 
-[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.4
 [0.2.3]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.3
 [0.2.2]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.2
 [0.2.1]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.1

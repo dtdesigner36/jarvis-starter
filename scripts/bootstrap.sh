@@ -108,6 +108,17 @@ mkdir -p wiki/{Systems,Architecture,Devlog,Canvas}
 
 UNIVERSAL="${SKILL_PATH}/archive/templates/universal"
 
+# ─── 2b. .gitignore — idempotent merge of JARVIS artifact rules (v0.2.4) ──
+# `npx skills add` drops the entire skill at .agents/ in the project root.
+# If we don't pre-ignore it, `git init && git add -A` sweeps hundreds of
+# template files into the user's first commit. Real user hit this on v0.2.3.
+JARVIS_GITIGNORE_MARK="# JARVIS-starter installed skill payload"
+if [ ! -f .gitignore ] || ! grep -qF "$JARVIS_GITIGNORE_MARK" .gitignore; then
+  [ -f .gitignore ] && echo "" >> .gitignore
+  cat "${UNIVERSAL}/.gitignore.template" >> .gitignore
+  echo "  ✅ .gitignore: added JARVIS artifacts (.agents/, skills-lock.json, backups)"
+fi
+
 # Wiki HOME — only if missing
 if [ ! -f wiki/HOME.md ]; then
   cp "${UNIVERSAL}/wiki/HOME.md.template" wiki/HOME.md
@@ -286,21 +297,26 @@ else
     cp .claude/settings.json .claude/settings.json.pre-jarvis.bak
     echo "  → backup: .claude/settings.json.pre-jarvis.bak"
 
-    # Merge hooks via jq: user hooks stay, JARVIS hooks added if missing
+    # Merge hooks via jq: user hooks stay, JARVIS hooks added if missing.
+    # Defensive: each `//` nullable-coalesce handles missing/null .hooks, null
+    # event values, null inner `hooks` arrays. `add // []` guards the empty-$ue
+    # case (to_entries of {} plus to_entries of jarvis always produces jarvis).
     jq -s '
       .[0] as $user | .[1] as $jarvis |
       $user * {
         hooks: (
-          ($user.hooks // {}) as $uh |
-          ($jarvis.hooks // {}) as $jh |
-          ($uh | to_entries) as $ue |
-          ($jh | to_entries) as $je |
-          (($ue + $je) | group_by(.key) | map({
-            key: .[0].key,
-            value: (map(.value) | add | unique_by(
-              (.matcher // "") + "::" + ((.hooks // []) | map(.command // "") | join(","))
-            ))
-          })) | from_entries
+          (($user.hooks // {}) | to_entries) as $ue |
+          (($jarvis.hooks // {}) | to_entries) as $je |
+          (($ue + $je)
+            | map(select(.value | type == "array"))
+            | group_by(.key)
+            | map({
+                key: .[0].key,
+                value: (map(.value) | add // [] | unique_by(
+                  (.matcher // "") + "::" + ((.hooks // []) | map(.command // "") | join(","))
+                ))
+              }))
+          | from_entries
         )
       }
     ' .claude/settings.json "${SETTINGS_TMPL}" > .claude/settings.json.new
@@ -313,6 +329,7 @@ else
       rm -f .claude/settings.json.new "${SETTINGS_TMPL}"
       echo "  ❌ jq merge failed — settings.json unchanged, backup at .pre-jarvis.bak"
       echo "      Manual merge: template at ${UNIVERSAL}/settings.json"
+      exit 1
     fi
   else
     echo "  ⚠️ jq not found — automatic merge not possible"
@@ -321,9 +338,40 @@ else
   fi
 fi
 
-# Verification: what actually got installed
-HOOKS_COUNT=$(jq -r '[.hooks | to_entries[] | .value[] | .hooks[]?] | length' .claude/settings.json 2>/dev/null || echo "0")
-echo "  ℹ️ JARVIS hooks in settings.json: ${HOOKS_COUNT}"
+# ─── Final-state validation (reads the file on disk, not intermediate state) ──
+# Before v0.2.4 the `HOOKS_COUNT` counter read the file right after merge and
+# announced success. A real user on v0.2.3 saw "3 hooks installed" while the
+# final on-disk file had .hooks == null because the IDE layer wiped the block
+# between the merge and the counter read. We now assert both expected event
+# keys are populated, fail loudly otherwise, and flag the known IDE quirk.
+if command -v jq >/dev/null 2>&1; then
+  PT_COUNT=$(jq -r '(.hooks.PostToolUse // []) | length' .claude/settings.json 2>/dev/null || echo 0)
+  UP_COUNT=$(jq -r '(.hooks.UserPromptSubmit // []) | length' .claude/settings.json 2>/dev/null || echo 0)
+  if [ "${PT_COUNT}" -lt 1 ] || [ "${UP_COUNT}" -lt 1 ]; then
+    echo ""
+    echo "  ❌ JARVIS verification FAILED — .claude/settings.json is missing hooks on disk."
+    echo "     PostToolUse=${PT_COUNT}  UserPromptSubmit=${UP_COUNT} (expected ≥1 each)"
+    echo ""
+    echo "     Likely cause:"
+    echo "       (a) a known Claude Code / VSCode extension quirk that strips the"
+    echo "           .hooks block from settings.json on permission-grants, OR"
+    echo "       (b) a settings.json shape our merge didn't anticipate."
+    echo ""
+    echo "     Recovery:"
+    echo "       1. Restore from backup: cp .claude/settings.json.pre-jarvis.bak .claude/settings.json"
+    echo "       2. Close the Claude Code / VSCode session and re-run bootstrap from a"
+    echo "          standalone terminal."
+    echo "       3. If the problem persists, file an issue with a redacted settings.json:"
+    echo "          https://github.com/dtdesigner36/jarvis-starter/issues"
+    exit 1
+  fi
+  echo "  ✅ JARVIS hooks verified on disk: PostToolUse=${PT_COUNT}  UserPromptSubmit=${UP_COUNT}"
+  echo "     ⚠  Note: Claude Code / VSCode may rewrite settings.json on permission"
+  echo "        prompts and drop this block mid-session. If that happens, re-run"
+  echo "        'bash \$SKILL_PATH/scripts/bootstrap.sh <archetype>' from an external shell."
+else
+  echo "  ⚠️ jq not installed — unable to verify hook installation on disk."
+fi
 
 # ─── 8. Record bootstrap in timeline ─────────────────────────────
 cat >> .jarvis/timeline.md << EOF

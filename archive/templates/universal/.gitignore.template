@@ -1,0 +1,11 @@
+# JARVIS-starter installed skill payload (via `npx skills add`)
+.agents/
+skills-lock.json
+
+# JARVIS runtime backups
+.claude/settings.json.pre-jarvis*.bak
+.claude/hooks/*.pre-jarvis*.bak
+.claude/settings.json.pre-jarvis-adopt*.bak
+
+# JARVIS uninstall backups
+jarvis-uninstall-backup-*/

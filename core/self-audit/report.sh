@@ -29,6 +29,36 @@ count_log() {
 echo "💠 JARVIS Self-Audit"
 echo ""
 
+# ─── Hook health (v0.2.4) ────────────────────────────────────────
+# IDE layers (VSCode Claude Code extension) have a known quirk: they rewrite
+# .claude/settings.json on permission-grants and drop the .hooks block. If
+# that happens after bootstrap, every hook-backed feature goes silent and the
+# user has no signal. Surface it up-front so self-audit is an honest health check.
+if command -v jq >/dev/null 2>&1 && [ -f .claude/settings.json ]; then
+  PT_COUNT=$(jq -r '(.hooks.PostToolUse // []) | length' .claude/settings.json 2>/dev/null || echo 0)
+  UP_COUNT=$(jq -r '(.hooks.UserPromptSubmit // []) | length' .claude/settings.json 2>/dev/null || echo 0)
+  if [ "${PT_COUNT}" -lt 1 ] || [ "${UP_COUNT}" -lt 1 ]; then
+    echo "❌ Hook health: DEGRADED"
+    echo "   .claude/settings.json has PostToolUse=${PT_COUNT}, UserPromptSubmit=${UP_COUNT}"
+    echo "   (expected ≥1 each). Hook-backed features are silent."
+    echo ""
+    echo "   Likely cause: the IDE (Claude Code / VSCode extension) rewrote"
+    echo "   settings.json on a permission-grant and dropped the .hooks block."
+    echo ""
+    echo "   Recovery:"
+    if [ -f .claude/settings.json.pre-jarvis.bak ]; then
+      echo "     cp .claude/settings.json.pre-jarvis.bak .claude/settings.json   # restore backup"
+      echo "     bash \"${SKILL_PATH}/scripts/bootstrap.sh\" <archetype>            # or re-bootstrap from an external shell"
+    else
+      echo "     bash \"${SKILL_PATH}/scripts/bootstrap.sh\" <archetype>            # re-run bootstrap from an external shell"
+    fi
+    echo ""
+  else
+    echo "✅ Hook health: PostToolUse=${PT_COUNT}, UserPromptSubmit=${UP_COUNT} (installed)"
+    echo ""
+  fi
+fi
+
 # ─── Hooks activity ──────────────────────────────────────────────
 echo "Hooks (core):"
 

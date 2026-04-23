@@ -491,6 +491,15 @@ wiki-location: ${WIKI_LOCATION}
 owned-files:
 EOF
 touch .jarvis/memory.md .jarvis/focus.md .jarvis/timeline.md
+
+# .gitignore — idempotent merge of JARVIS artifact rules (v0.2.4)
+JARVIS_GITIGNORE_MARK="# JARVIS-starter installed skill payload"
+if [ ! -f .gitignore ] || ! grep -qF "$JARVIS_GITIGNORE_MARK" .gitignore; then
+  [ -f .gitignore ] && echo "" >> .gitignore
+  cat "${UNIVERSAL}/.gitignore.template" >> .gitignore
+  echo "   ✓ .gitignore: added JARVIS artifacts (.agents/, skills-lock.json, backups)"
+fi
+
 if [ ! -f .jarvis/preferences.md ] && [ -f "${SKILL_PATH}/core/state/preferences.md.template" ]; then
   cp "${SKILL_PATH}/core/state/preferences.md.template" .jarvis/preferences.md
 fi
