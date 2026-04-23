@@ -4,6 +4,41 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-04-23
+
+Hotfix release triggered by an independent code review (codex/gpt-5 via MCP). The review covered three layers: code safety, architectural parity, and a claim-by-claim audit of README/SKILL.md/CHANGELOG against actual code. v0.2.1 closes the safety and parity gaps and realigns documentation with reality; on-demand-command architecture (markdown-vs-dispatcher) is deferred to v0.3.
+
+### Fixed
+
+- **`safe-uninstall.sh`: non-destructive.** Previously `rm`'d the legacy hook file names unconditionally and did `jq 'del(.hooks)'` (which erased **all** hook registrations including the user's own). Contradicted the CHANGELOG claim of preserving user config. Now:
+  - `restore_or_skip()` handles legacy `{post-edit,post-bash,pre-prompt}.sh`: restore from `.pre-jarvis.bak` if bootstrap made one; else strip the JARVIS-appended block by sentinel `# === JARVIS-starter hooks (appended) ===`; else, if the file only references JARVIS core paths, treat as greenfield install and remove; else leave the file untouched (it's user-owned).
+  - Selective `jq` filter removes only entries whose `command` points at `jarvis-*.sh` or legacy hook files; user hook entries survive. Empty `.hooks` is cleaned up.
+  - CLAUDE.md with JARVIS marker at byte 0 is removed entirely (was: left full of JARVIS content because the empty-output guard refused the write).
+  - Backups now include legacy hook files too.
+- **Linux `stat` portability.** `hook-detector.sh`, `prompt-analyzer.sh`, and `gitignore-check.sh` fell back to `echo 0` on Linux because they used BSD `stat -f "%m"` only. Added an inline `_mtime()` helper (BSD → GNU → 0). Throttling and mtime-based counters now work correctly on Linux, not just macOS.
+- **`adopt.sh`: `jq` preflight.** Without `jq`, adopt used to write `.jarvis/`, CLAUDE.md marker, and hook files before hitting a `jq` call and aborting via `set -e`, leaving a partial install. Now aborts with an actionable error **before any file write**.
+- **Shell-quoted hook commands in `settings.json`.** Both `adopt.sh` (Python generator) and `bootstrap.sh` (previously a raw `sed` over the template) now `shlex.quote` the project path in each hook command. Projects with spaces or shell metacharacters in their path — e.g. `"~/My Projects/foo"` — no longer break hook execution.
+
+### Added
+
+- **`bootstrap.sh` wiki-ownership parity.** `.jarvis/state.md` written at greenfield bootstrap now mirrors the adopt schema: `mode`, `project-root`, `skill-path`, `wiki-ownership: active`, `wiki-location`, `owned-files`. Namespace matrix is the same rule as adopt: `docs/` exists without `wiki/` → `wiki-location: .jarvis`. Closes v0.2.0's "active wiki ownership" claim for both install paths.
+- **Bilingual task-routing classification.** `core/task-routing/prompt-analyzer.sh` now recognizes both Russian and English architectural keywords in all three regexes (ARCH_KEYWORDS, Complex, Architectural). Matches the bilingual pattern already in `adr-detector.sh`. Input classification is invariant to prompt language in both repos.
+- **`llm-agent` archetype CLAUDE.md.addon.** The archetype tier1 folder previously had only `description.md`; the release-notes claim of "overlays ship themselves" was misleading. Added the addon with rules for prompt versioning, hardcoded model strings, `cache_control` on system prompts, prompt-injection risk on user-content, PII filtering, filesystem-tool scoping.
+
+### Changed
+
+- **README / SKILL.md command surface split.** On-demand commands are now presented as two groups: **Real shell commands** (`self-audit` runs `core/self-audit/report.sh`; `adopt` runs `scripts/adopt.sh`) and **Model-prompted workflows** (markdown instruction files Claude reads on demand — `status`, `route`, `find`, `evolve`, `decide`, `suggest`, `docs`, `audit`, `security`, `remember`, `history`). The distinction matters: the second group is guidance for Claude, not a standalone CLI. Architecture block updated to match.
+- **CHANGELOG `[0.1.0]` entry: "0 tokens at rest" qualification.** The honest phrasing is "0 tokens until a hook fires"; per-prompt classification is always shell-only and token-free, but the core hooks run once per user turn.
+- **CHANGELOG `[0.2.0]` entry: Discovery Layer clarification.** Explicit note that `stack-matcher.sh` ranks and displays; `npx skills add` invocation is left to the user. No automatic install.
+
+### Deferred (v0.3 scope)
+
+- Real shell dispatcher under the model-prompted on-demand commands (`jarvis docs` → exec audit script, etc.) — needs an architectural decision about keeping markdown-as-instructions vs moving to a shell-dispatcher model.
+- GitHub skill discovery script for `jarvis find` (currently registry-ranking + hint-to-GitHub-query only).
+- `web-app` / `web-api` archetype `hooks-addon.sh` files (only `telegram-bot` has one today).
+- `school-mode` runtime plugin loader.
+- Centralized `core/lib/` helpers (shared `_mtime`, JSON parsing, usage logging, throttling).
+
 ## [0.2.0] — 2026-04-22
 
 The "JARVIS starts paying for itself" release. 15 commits since v0.1.0. Across six iterated real-project retests (Next.js + Supabase web app and a Python aiogram Telegram bot), the useful-share climbed from 20–25% (first real-use) to ~88% (latest retest). Four architectural shifts define v0.2.0: (1) the installer actually installs, (2) JARVIS sees itself via `self-audit`, (3) a full Discovery Layer binds stack → relevant skills, (4) wiki stops being a reminder system and becomes an active owner.
@@ -33,7 +68,7 @@ The "JARVIS starts paying for itself" release. 15 commits since v0.1.0. Across s
 
 ### Added
 
-- **Discovery Layer (layer B) — `core/skill-discovery/stack-matcher.sh`.** Python-based ranker that reads `.jarvis/state.md` (archetype + stack) and `known-registry.md`, ranks registry entries by archetype-match + stack-tag overlap. Emits top-N with rationale (`★★★★★ package match: archetype=web-app stack-overlap=[nextjs,react,tailwind]`).
+- **Discovery Layer (layer B) — `core/skill-discovery/stack-matcher.sh`.** Python-based ranker that reads `.jarvis/state.md` (archetype + stack) and `known-registry.md`, ranks registry entries by archetype-match + stack-tag overlap. Emits top-N with rationale (`★★★★★ package match: archetype=web-app stack-overlap=[nextjs,react,tailwind]`). Ranking + display only — `npx skills add` invocation is left to the user.
 - **Stack-tags in `known-registry.md`.** All ~30 entries got a Stack-tags column powering the ranker.
 - **Stack auto-detection in `adopt.sh` Phase A.** Parses `package.json` (incl. monorepo subdirs: `app/`, `apps/*/`, `packages/*/`, `client/`, `server/`, `web/`, `api/`) and `pyproject.toml` / `requirements.txt`. Maps 40+ deps → stack-tags and 15+ → archetype. Result written to `.jarvis/state.md`.
 - **Archetype overlay opt-in in `adopt.sh`** (`--enable archetype-overlay` or interactive Phase C row). Adds archetype-specific `CLAUDE.md.addon` with marker `<!-- jarvis-archetype-overlay: <archetype> -->`, archetype commands, and wires `hooks-addon.sh` into existing `jarvis-*.sh` hooks. Idempotent.
@@ -62,7 +97,7 @@ First public release.
 
 - **Bootstrap mode (`jarvis start`)** — archetype classification, stack proposal, skill discovery, template rollout, verification, token optimization, persistent-mode activation across Phases 0–6.
 - **Adopt mode (`jarvis adopt`)** — soft integration for brownfield projects. Runs a gap analysis per core feature and installs only what's missing, in the `.jarvis/` namespace + new `jarvis-*.sh` hook files. Never touches existing `CLAUDE.md`, hooks, or docs. Auto-triggered when ≥2 dev-stage signals are detected (git history, mature lockfile, real `src/`, existing `CLAUDE.md`, living docs, CI). See [archive/bootstrap/brownfield-adopt.md](archive/bootstrap/brownfield-adopt.md).
-- **Core hooks (always-on, 0 tokens at rest):**
+- **Core hooks (always-on, 0 tokens until a hook fires):**
   - `wiki-maintenance` — PostToolUse detects events (new module, large edit, new Prisma model) and injects short reminders.
   - `task-routing` — UserPromptSubmit classifies complexity (Trivial/Simple/Medium/Complex/Architectural), recommends model + plan-mode.
   - `memory-recall` — matches prompt topic against `.jarvis/memory.md` and `wiki/Systems/*.md`, surfaces "already solved: …" hints.
@@ -81,6 +116,7 @@ First public release.
 
 Built on patterns from `@alinaqi/claude-bootstrap`, `@pbakaus/impeccable`, `@emilkowalski/skill`, `@leonxlnx/taste-skill`, `anthropics/skills`, `@wcpaxx/spec-kit-brownfield-extensions`, `@travisvn/awesome-claude-skills`. See [NOTICE.md](NOTICE.md) for full attribution.
 
-[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.1
 [0.2.0]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.1.0

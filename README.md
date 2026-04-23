@@ -83,13 +83,23 @@ If you run `jarvis start` in an existing project, JARVIS detects the dev-stage (
 
 ## Commands (after install)
 
+JARVIS commands come in two flavours. The **executable** ones run shell scripts directly. The **model-prompted** ones are markdown instruction files that Claude reads on demand — they guide Claude through a workflow, they are not standalone programs.
+
+**Executable shell commands:**
+
 | Command | What it does |
 |---------|--------------|
-| `jarvis` or `jarvis status` | Brief project summary |
+| `jarvis self-audit` | Inventories which JARVIS hooks actually fired, usage counts, stale wiki, real shell output |
 | `jarvis adopt` | Soft-integrate into an existing project (gap analysis, no overwrite) |
+
+**Model-prompted workflows (markdown Claude reads when invoked):**
+
+| Command | What it does |
+|---------|--------------|
+| `jarvis` or `jarvis status` | Brief project summary (Claude reads `.jarvis/state.md` + `focus.md`) |
 | `jarvis route "<task>"` | Model / plan-mode recommendation for a task |
-| `jarvis find "<need>"` | Find a GitHub skill matching a specific need |
-| `jarvis evolve <layer>` | Add an archetype layer (e.g., bot → bot + web) |
+| `jarvis find "<need>"` | Claude searches the curated registry + suggests a GitHub query (no install) |
+| `jarvis evolve <layer>` | Claude applies an archetype overlay |
 | `jarvis decide "<q>"` | Help with an architectural decision |
 | `jarvis suggest` | Quality improvement suggestions |
 | `jarvis docs` | Check wiki freshness |
@@ -141,14 +151,15 @@ jarvis-starter/
 │   ├── focus-tracker/        # Passively tracks current focus
 │   └── security-watch/       # Detects hardcoded secrets and .env leaks
 │
-├── on-demand/                # On-request commands
-│   ├── skill-discovery/      # jarvis find — skill search
-│   ├── security/             # jarvis security — security commands
+├── on-demand/                # Markdown instructions Claude reads on demand
+│   ├── skill-discovery/      # jarvis find — registry match + GitHub query hints
+│   ├── security/             # jarvis security — audit workflow
 │   ├── evolve.md             # jarvis evolve
 │   ├── decide.md             # jarvis decide
 │   ├── suggest.md            # jarvis suggest
 │   ├── docs.md               # jarvis docs
-│   └── audit.md              # jarvis audit
+│   ├── audit.md              # jarvis audit
+│   └── self-audit/           # jarvis self-audit — real shell script (scripts + report.sh)
 │
 ├── plugins/                  # Optional extensions (off by default)
 │   └── school-mode/

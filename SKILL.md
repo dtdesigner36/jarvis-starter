@@ -2,7 +2,7 @@
 name: jarvis-starter
 description: J.A.R.V.I.S. for your Claude Code project. On start — bootstrap with archetype classification, skill selection, wiki setup. For existing projects — soft adopt via gap analysis (installs only missing features, respects existing config). After start/adopt — quiet persistent assistant via hooks that maintains wiki, recommends model/plan-mode for tasks, surfaces existing solutions, tracks project evolution. Built for vibe-coders. Bonus optional school-mode plugin for those who want to learn.
 user-invocable: true
-argument-hint: "start <description> | adopt | status | find <need> | evolve | decide | suggest | docs | audit | self-audit | remember | school"
+argument-hint: "start <description> | adopt | self-audit | status | find <need> | evolve | decide | suggest | docs | audit | remember | school"
 ---
 
 # JARVIS Starter — persistent project assistant
@@ -78,19 +78,23 @@ JARVIS lives in `.jarvis/` and works through core hooks:
 - **Focus tracker** — PostToolUse passively updates `.jarvis/focus.md` (shell-only, 0 tokens). See `core/focus-tracker/`.
 - **Security watch** — PostToolUse scans for hardcoded secrets and `.env` leaks. See `core/security-watch/`.
 
-**🔍 On-demand commands** (always available, loaded when called):
-- `jarvis status` — brief summary
-- `jarvis find "<need>"` — find a skill for a specific need (GitHub + registry)
-- `jarvis evolve <layer>` — add an archetype layer
+**🔍 On-demand commands.** JARVIS commands split in two: a small set of **real shell scripts** and a larger set of **markdown instructions Claude reads on demand**. The markdown ones aren't standalone programs — they guide Claude through a workflow. Most on-demand commands are the second kind.
+
+**Real shell scripts (executable):**
+- `jarvis self-audit` — audit of **JARVIS itself** from shell: which hooks actually fired, usage counts, stale wiki (real output from `core/self-audit/report.sh`)
+
+**Model-prompted workflows (markdown Claude reads):**
+- `jarvis status` — brief summary (Claude reads `.jarvis/state.md` + `focus.md`)
+- `jarvis find "<need>"` — Claude searches the curated registry and suggests a GitHub query; no automatic install
+- `jarvis evolve <layer>` — Claude applies an archetype overlay
 - `jarvis decide "<q>"` — help with an architectural decision
 - `jarvis suggest` — quality improvement suggestions
 - `jarvis docs` — wiki freshness check
 - `jarvis audit` — comprehensive audit of your **project** (wiki/tokens/deps)
-- `jarvis self-audit` — audit of **JARVIS itself**: which hooks fired, which on-demand commands you haven't tried, which archetype overlays are available
-- `jarvis security` — security audit
+- `jarvis security` — security audit workflow (live secret-scan runs from hooks; the audit command is a walkthrough)
 - `jarvis route "<task>"` — manually classify task complexity
 
-**📦 Rare commands:** `remember`, `forget`, `history`, `focus`, `optimize` — in `archive/subcommands-rare/`.
+**📦 Rare commands:** `remember`, `forget`, `history`, `focus`, `optimize` — markdown workflows in `archive/subcommands-rare/`.
 
 **🔌 Plugins (off by default):**
 - `school-mode` — for those who want not just to build but to learn. Creates a separate `school-wiki/` with a topic index for the project's stack. Deep exploration happens only on request via `jarvis school topic <area>`. Activation: `jarvis school on`. NOT proactively offered — user decides.
