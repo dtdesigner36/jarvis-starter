@@ -76,12 +76,11 @@ fi
 # ─── 1. Create .jarvis/ (safe merge) ──────────────────────────────
 mkdir -p .jarvis
 
-# Namespace matrix (parity with adopt.sh): if user already has docs/ but no
-# wiki/, JARVIS owns .jarvis/systems/ instead of a parallel wiki/ tree.
-WIKI_LOCATION="wiki"
-if [ -d docs ] && [ ! -d wiki ]; then
-  WIKI_LOCATION=".jarvis"
-fi
+# bootstrap is the greenfield installer (`jarvis start`) — it always creates
+# wiki/{Systems,Architecture,Devlog,Canvas} below. No namespace matrix here:
+# that lives in adopt.sh, which handles existing projects with a pre-existing
+# docs/ or wiki/ tree. State must not claim a .jarvis location that bootstrap
+# does not honor.
 
 if [ ! -f .jarvis/state.md ]; then
   cat > .jarvis/state.md <<EOF
@@ -92,7 +91,7 @@ project-root: $(pwd)
 skill-path: ${SKILL_PATH}
 archetypes: ${ARCHETYPE}${SECONDARY:+ + $SECONDARY}
 wiki-ownership: active
-wiki-location: ${WIKI_LOCATION}
+wiki-location: wiki
 owned-files:
 EOF
 fi

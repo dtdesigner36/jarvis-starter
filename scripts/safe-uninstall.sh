@@ -95,9 +95,11 @@ PY
     return 0
   fi
   # Greenfield install: no .bak, no sentinel — file was cp'd verbatim from our
-  # template. Detect by JARVIS skill-internal path references; if present, the
-  # file is wholly ours and safe to remove.
-  if grep -qE 'core/(wiki-maintenance|security-watch|focus-tracker|task-routing)' "$path"; then
+  # template. Detect by the exact bootstrap dispatch idiom — a command line
+  # of the form  bash "<skill-path>/core/<feature>/<script>.sh" <<< "$INPUT"
+  # — which is specific enough that a user hook merely referencing those core
+  # paths in a comment will NOT trigger removal.
+  if grep -qE 'bash "[^"]*/core/(wiki-maintenance|security-watch|focus-tracker|task-routing|memory-recall)/[^"]*\.sh" *<<< *"\$INPUT"' "$path"; then
     rm -f "$path"
     echo "→ ${path}: greenfield JARVIS install — removed"
     return 0
@@ -122,21 +124,42 @@ fi
 # User hook entries (any other command) are preserved.
 if [ -f .claude/settings.json ]; then
   if command -v jq >/dev/null 2>&1; then
-    jq '
-      .hooks |= (
-        to_entries
-        | map(.value |= (
-            map(.hooks |= map(select(
-              (.command // "") | test("jarvis-|/\\.claude/hooks/(post-edit|post-bash|pre-prompt)\\.sh") | not
-            )))
-            | map(select(.hooks | length > 0))
-          ))
-        | map(select(.value | length > 0))
-        | from_entries
-      ) | if (.hooks // {}) == {} then del(.hooks) else . end
-    ' .claude/settings.json > .claude/settings.json.new
-    mv .claude/settings.json.new .claude/settings.json
-    echo "→ .claude/settings.json: only JARVIS hook entries removed; user hooks/config preserved"
+    # Defensive: .hooks may be missing / null / not-an-object; event values may
+    # be not-an-array; matcher-group .hooks may be not-an-array. In all those
+    # weird shapes, leave that piece untouched rather than aborting.
+    if jq '
+      if (.hooks | type) != "object" then .
+      else
+        .hooks |= (
+          to_entries
+          | map(
+              if (.value | type) != "array" then .
+              else
+                .value |= (
+                  map(
+                    if (.hooks | type) != "array" then .
+                    else
+                      .hooks |= map(select(
+                        (.command // "") | test("jarvis-|/\\.claude/hooks/(post-edit|post-bash|pre-prompt)\\.sh") | not
+                      ))
+                    end
+                  )
+                  | map(select((.hooks | type) != "array" or (.hooks | length) > 0))
+                )
+              end
+            )
+          | map(select((.value | type) != "array" or (.value | length) > 0))
+          | from_entries
+        )
+        | if (.hooks // {}) == {} then del(.hooks) else . end
+      end
+    ' .claude/settings.json > .claude/settings.json.new 2>/dev/null; then
+      mv .claude/settings.json.new .claude/settings.json
+      echo "→ .claude/settings.json: only JARVIS hook entries removed; user hooks/config preserved"
+    else
+      rm -f .claude/settings.json.new
+      echo "⚠️  settings.json has an unusual shape — left untouched. Inspect manually: .claude/settings.json"
+    fi
   else
     echo "⚠️  jq not installed — settings.json untouched (manually remove JARVIS hook entries)"
   fi

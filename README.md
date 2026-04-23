@@ -44,8 +44,8 @@ Starting a Claude Code project means re-inventing the same scaffolding every tim
 JARVIS solves both:
 
 - **On start** — sets up architecture for the project type (Telegram bot, web app, API, landing, game, parser, mobile, library, CLI, LLM-agent, and more) using archetype-specific overlays.
-- **On adopt** — for existing projects, runs a gap analysis and installs **only the features you're missing**. Never touches your CLAUDE.md, hooks, or docs. Everything new lives in `.jarvis/` or in separate `jarvis-*.sh` hook files.
-- **Ongoing** — passive hooks maintain the wiki, recommend the right model (Opus / Sonnet / Haiku) and plan-mode for each task, resurface already-solved problems, and track project evolution. **0 tokens at rest**.
+- **On adopt** — for existing projects, runs a gap analysis and installs **only the features you're missing**. Adds a single marker line to `CLAUDE.md`; never overwrites your existing rules. Doesn't replace your hooks — wraps legacy hook names with a sentinel-guarded block or installs new `jarvis-*.sh` files alongside. Everything new lives in `.jarvis/` or in separate `jarvis-*.sh` hook files.
+- **Ongoing** — passive hooks maintain the wiki, recommend the right model (Opus / Sonnet / Haiku) and plan-mode for each task, resurface already-solved problems, and track project evolution. **0 tokens until a hook fires** — each core hook runs once per tool-use or user turn, then returns silently when there's nothing to say.
 
 ---
 
@@ -60,8 +60,8 @@ JARVIS solves both:
 JARVIS walks you through:
 1. Requirements clarification
 2. Stack selection
-3. Relevant skill picks (local registry + GitHub discovery)
-4. Infrastructure rollout (CLAUDE.md, hooks, wiki/, skills)
+3. Relevant skill picks from the curated registry, ranked by archetype + stack overlap (GitHub-query discovery is model-guided — the install step is yours)
+4. Infrastructure rollout (CLAUDE.md, hooks, wiki/)
 5. Initial optimization advice
 
 ### Existing project — `jarvis adopt`
@@ -144,7 +144,7 @@ jarvis-starter/
 ├── README.md                 # This file
 ├── NOTICE.md                 # Attributions
 │
-├── core/                     # Always-on hooks (0 tokens at rest)
+├── core/                     # Always-on hooks (0 tokens until a hook fires)
 │   ├── wiki-maintenance/     # Watches code → proposes wiki updates
 │   ├── task-routing/         # Classifies prompts → recommends model
 │   ├── memory-recall/        # Surfaces already-resolved topics

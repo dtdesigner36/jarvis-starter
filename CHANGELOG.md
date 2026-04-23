@@ -4,6 +4,22 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-04-23
+
+Follow-up hotfix from the v0.2.1 codex re-audit. Five small, targeted fixes that close the remaining findings without scope creep. No new features.
+
+### Fixed
+
+- **`adopt.sh --yes` silently aborted when no `--enable`/`--skip` was supplied.** The install-confirmation prompt at `adopt.sh:459` fired in non-interactive mode too; `read` got EOF, `REPLY` was empty, and the script exited with an "Aborted." message before writing anything. Now the confirmation is skipped when `NONINTERACTIVE=1` (set by `--yes`). Pre-existing bug from v0.2.0; blocked CI and scripted rollouts.
+- **`safe-uninstall.sh` jq filter is defensive.** Previously assumed `.hooks` is always a well-formed object of arrays of groups. With `set -euo pipefail`, a `settings.json` where `.hooks` is null/missing, an event value is not an array, or a matcher-group `hooks` is not an array would cause uninstall to abort. Now each level is type-checked and left untouched on unusual shapes; jq errors fall back to "leave `settings.json` alone and warn".
+- **`restore_or_skip()` greenfield-install heuristic tightened.** Was `grep -qE 'core/(wiki-maintenance|security-watch|focus-tracker|task-routing)'` — matched any user hook that merely commented a JARVIS path. Now requires the exact bootstrap dispatch idiom: `bash "<path>/core/<feature>/<script>.sh" <<< "$INPUT"`. A user hook that just mentions `core/wiki-maintenance` in a comment is no longer removed.
+- **`bootstrap.sh` state.md no longer lies about `wiki-location`.** v0.2.1 wrote `wiki-location: .jarvis` when `docs/` existed without `wiki/`, but bootstrap unconditionally creates `wiki/` below anyway. State now always records `wiki-location: wiki` for bootstrap installs. The brownfield namespace matrix lives in `adopt.sh` and is unchanged.
+
+### Changed
+
+- **README truth-up.** Matches the CHANGELOG/SKILL.md honesty pass that shipped in v0.2.1 but missed the README: "0 tokens at rest" → "0 tokens until a hook fires"; "Never touches your CLAUDE.md, hooks, or docs" → honest phrasing about the CLAUDE.md marker line and legacy-hook sentinel wrap; "local registry + GitHub discovery" → curated-registry ranking, with GitHub-query discovery marked as model-guided (install stays a user action).
+- **Release-notes / changelog wording** for `[0.2.1]` adjusted to describe bootstrap's state.md as schema-aligned with adopt (not a full namespace-matrix parity) — consistent with the fix above.
+
 ## [0.2.1] — 2026-04-23
 
 Hotfix release triggered by an independent code review (codex/gpt-5 via MCP). The review covered three layers: code safety, architectural parity, and a claim-by-claim audit of README/SKILL.md/CHANGELOG against actual code. v0.2.1 closes the safety and parity gaps and realigns documentation with reality; on-demand-command architecture (markdown-vs-dispatcher) is deferred to v0.3.
@@ -21,7 +37,7 @@ Hotfix release triggered by an independent code review (codex/gpt-5 via MCP). Th
 
 ### Added
 
-- **`bootstrap.sh` wiki-ownership parity.** `.jarvis/state.md` written at greenfield bootstrap now mirrors the adopt schema: `mode`, `project-root`, `skill-path`, `wiki-ownership: active`, `wiki-location`, `owned-files`. Namespace matrix is the same rule as adopt: `docs/` exists without `wiki/` → `wiki-location: .jarvis`. Closes v0.2.0's "active wiki ownership" claim for both install paths.
+- **`bootstrap.sh` state schema alignment.** `.jarvis/state.md` written at greenfield bootstrap now carries the same keys adopt writes (`mode`, `project-root`, `skill-path`, `wiki-ownership: active`, `wiki-location`, `owned-files`) so `.jarvis/`-reading tools work the same across both install paths. Bootstrap is the greenfield installer (`jarvis start`) — it always creates `wiki/` and always records `wiki-location: wiki`. The brownfield namespace matrix (docs/ without wiki/ → `.jarvis/systems/`) lives in `adopt.sh` and is unchanged.
 - **Bilingual task-routing classification.** `core/task-routing/prompt-analyzer.sh` now recognizes both Russian and English architectural keywords in all three regexes (ARCH_KEYWORDS, Complex, Architectural). Matches the bilingual pattern already in `adr-detector.sh`. Input classification is invariant to prompt language in both repos.
 - **`llm-agent` archetype CLAUDE.md.addon.** The archetype tier1 folder previously had only `description.md`; the release-notes claim of "overlays ship themselves" was misleading. Added the addon with rules for prompt versioning, hardcoded model strings, `cache_control` on system prompts, prompt-injection risk on user-content, PII filtering, filesystem-tool scoping.
 
@@ -109,14 +125,15 @@ First public release.
 - **Brownfield scan (Phase 0)** — stack detection via `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, configs, folder signals.
 - **Dev-stage detection (Phase 0.5)** — six signals determining Start-vs-Adopt routing.
 - **`school-mode` plugin** (off by default) — opt-in learning mode with topic-based lesson dialogues.
-- **Skill-discovery** — local registry + GitHub search for `jarvis find`.
+- **Skill-discovery** — curated local registry for `jarvis find`; GitHub-query discovery is model-guided (Claude proposes a search), not an installed script.
 - **Bootstrap helper** (`scripts/bootstrap.sh`) — conflict-detection and merge strategy for power users bypassing the dialogue flow.
 
 ### Acknowledgments
 
 Built on patterns from `@alinaqi/claude-bootstrap`, `@pbakaus/impeccable`, `@emilkowalski/skill`, `@leonxlnx/taste-skill`, `anthropics/skills`, `@wcpaxx/spec-kit-brownfield-extensions`, `@travisvn/awesome-claude-skills`. See [NOTICE.md](NOTICE.md) for full attribution.
 
-[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.2
 [0.2.1]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.1
 [0.2.0]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.1.0

@@ -456,7 +456,7 @@ if [ "${DRY_RUN}" = "1" ]; then
   exit 0
 fi
 
-if [ -z "${ENABLE}" ] && [ -z "${SKIP}" ] && [ ${#FEATURES_TO_INSTALL[@]} -gt 0 ]; then
+if [ "${NONINTERACTIVE}" != "1" ] && [ -z "${ENABLE}" ] && [ -z "${SKIP}" ] && [ ${#FEATURES_TO_INSTALL[@]} -gt 0 ]; then
   read -p "Proceed with install? (y/n) " -n 1 -r
   echo ""
   [[ ! $REPLY =~ ^[Yy]$ ]] && { echo "Aborted."; exit 0; }
@@ -567,7 +567,8 @@ seed_memory() {
     echo ""
     if [ "${HAS_GIT}" = "1" ]; then
       echo "## Recent commits (git log -50)"
-      git log --oneline -50 2>/dev/null | head -50 | sed 's/^/- /'
+      # `|| true` survives a git repo with zero commits (exit 128) under pipefail
+      git log --oneline -50 2>/dev/null | head -50 | sed 's/^/- /' || true
       echo ""
     fi
     if [ "${HAS_README}" = "1" ]; then

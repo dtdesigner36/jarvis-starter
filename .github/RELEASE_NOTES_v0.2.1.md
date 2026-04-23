@@ -17,7 +17,7 @@ Similarly: the Linux `stat` fallback existed in `live-update.sh` but was missing
 
 ### Added
 
-- **Bootstrap wiki-ownership state parity.** `.jarvis/state.md` written at greenfield bootstrap now carries `mode`, `project-root`, `skill-path`, `wiki-ownership: active`, `wiki-location`, and `owned-files`. The namespace matrix (`docs/` without `wiki/` → `wiki-location: .jarvis`) is the same rule adopt uses.
+- **Bootstrap state.md schema alignment.** `.jarvis/state.md` written at greenfield bootstrap now carries `mode`, `project-root`, `skill-path`, `wiki-ownership: active`, `wiki-location`, and `owned-files` — the same keys adopt writes, so `.jarvis/`-reading tools work identically across both install paths. (An earlier draft of this note claimed bootstrap also honors the brownfield namespace matrix; that's corrected in v0.2.2 — bootstrap is the greenfield installer and always creates `wiki/`, so its state records `wiki-location: wiki`. The matrix stays in `adopt.sh`.)
 - **Bilingual task-routing classification.** `core/task-routing/prompt-analyzer.sh` now merges Russian and English keywords across all three classifiers — the same pattern `adr-detector.sh` had been using. Input classification is invariant to prompt language.
 - **`llm-agent` archetype `CLAUDE.md.addon`.** Completes the tier1 overlay: rules for prompt versioning, model-version pinning (avoid `-latest` aliases), `cache_control` on system prompts, prompt-injection risks, PII filtering, filesystem-tool scoping.
 
