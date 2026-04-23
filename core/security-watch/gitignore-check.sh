@@ -15,6 +15,9 @@ if [ -f ".jarvis/plugins.md" ] && grep -q "security-watch: off" ".jarvis/plugins
   exit 0
 fi
 
+# Portable file mtime — BSD (macOS) first, GNU (Linux) fallback
+_mtime() { stat -f "%m" "$1" 2>/dev/null || stat -c "%Y" "$1" 2>/dev/null || echo 0; }
+
 FIRED=0
 
 # ─── .env created/edited → check .gitignore ───────────────────────
@@ -61,7 +64,7 @@ fi
 if [ -n "$FILE" ] && echo "$FILE" | grep -qE "(auth|rls|middleware|policies|policy|migrations?/|supabase/(server|client|admin|service)|service[-_]role)" && ! echo "$FILE" | grep -qE "(test|spec|node_modules|\.next/)"; then
   LAST_SEC_HINT=".jarvis/last-security-hint"
   NOW_TS=$(date +%s)
-  LAST_TS=$(stat -f "%m" "${LAST_SEC_HINT}" 2>/dev/null || echo 0)
+  LAST_TS=$(_mtime "${LAST_SEC_HINT}")
   # No more often than once every 7 days
   if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 7 ]; then
     echo "💡 JARVIS: editing an auth/security-sensitive file. Try \`jarvis security\` for an audit (RLS, policies, secret leaks)."

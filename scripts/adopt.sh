@@ -22,6 +22,14 @@ cd "${PROJECT_ROOT}"
 SKILL_PATH="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"
 UNIVERSAL="${SKILL_PATH}/archive/templates/universal"
 
+# ─── Preflight: jq is required (we use it before set -e could undo writes) ──
+if ! command -v jq >/dev/null 2>&1; then
+  echo "❌ jq is required for adopt (atomic settings.json merge)." >&2
+  echo "   Install: macOS → 'brew install jq', Debian/Ubuntu → 'sudo apt install jq'." >&2
+  echo "   Aborting before any file is written." >&2
+  exit 1
+fi
+
 # ─── Args ─────────────────────────────────────────────────────────
 ENABLE=""
 SKIP=""

@@ -19,6 +19,9 @@ if [ -f ".jarvis/plugins.md" ] && grep -q "task-routing: off" ".jarvis/plugins.m
   exit 0
 fi
 
+# Portable file mtime — BSD (macOS) first, GNU (Linux) fallback
+_mtime() { stat -f "%m" "$1" 2>/dev/null || stat -c "%Y" "$1" 2>/dev/null || echo 0; }
+
 # ─── Read preferences ─────────────────────────────────────────────
 STRATEGY="single"
 LONG_TASK_THRESHOLD=60
@@ -150,7 +153,7 @@ esac
 if echo "$PROMPT" | grep -qiE "(как (реализ|сделать|настроить)|library for|какая библиотека|чем сделать|инструмент для|какой инструмент|how to (implement|set up)|what library)"; then
   LAST_FIND_HINT=".jarvis/last-find-hint"
   NOW_TS=$(date +%s)
-  LAST_TS=$(stat -f "%m" "${LAST_FIND_HINT}" 2>/dev/null || echo 0)
+  LAST_TS=$(_mtime "${LAST_FIND_HINT}")
   if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 5 ]; then
     echo ""
     echo "💡 JARVIS: looks like you're searching for a solution. Try \`jarvis find <need>\` to search the registry / GitHub."

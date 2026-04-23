@@ -15,6 +15,9 @@ if [ ! -d ".jarvis" ]; then
   exit 0
 fi
 
+# Portable file mtime — BSD (macOS) first, GNU (Linux) fallback
+_mtime() { stat -f "%m" "$1" 2>/dev/null || stat -c "%Y" "$1" 2>/dev/null || echo 0; }
+
 FIRED=0
 
 # Counter "edits without wiki touched" — for periodic suggestion of `jarvis docs`
@@ -83,14 +86,14 @@ fi
 # ─── Stale wiki + active code ─────────────────────────────────────
 # If last wiki edit was > 14 days ago while code is actively edited
 if [ -d "wiki" ]; then
-  LATEST_WIKI=$(find wiki -type f -name "*.md" -exec stat -f "%m" {} + 2>/dev/null | sort -nr | head -1)
+  LATEST_WIKI=$(find wiki -type f -name "*.md" -print0 2>/dev/null | while IFS= read -r -d '' f; do _mtime "$f"; done | sort -nr | head -1)
   NOW=$(date +%s)
   if [ -n "$LATEST_WIKI" ]; then
     DAYS_OLD=$(( (NOW - LATEST_WIKI) / 86400 ))
     if [ "$DAYS_OLD" -gt 14 ]; then
       # Don't spam — check "last-warned" flag in .jarvis/
       LAST_WARN_FILE=".jarvis/last-wiki-warning"
-      if [ ! -f "$LAST_WARN_FILE" ] || [ $(( (NOW - $(stat -f "%m" "$LAST_WARN_FILE" 2>/dev/null || echo 0)) / 86400 )) -gt 7 ]; then
+      if [ ! -f "$LAST_WARN_FILE" ] || [ $(( (NOW - $(_mtime "$LAST_WARN_FILE")) / 86400 )) -gt 7 ]; then
         echo "💠 JARVIS: wiki hasn't been updated for $DAYS_OLD days while code is active. jarvis docs for a check."
         touch "$LAST_WARN_FILE"
         FIRED=1
@@ -103,7 +106,7 @@ fi
 if [ "${CURRENT}" -ge 30 ] && [ "${FIRED}" = "0" ]; then
   LAST_DOCS_HINT=".jarvis/last-docs-hint"
   NOW_TS=$(date +%s)
-  LAST_TS=$(stat -f "%m" "${LAST_DOCS_HINT}" 2>/dev/null || echo 0)
+  LAST_TS=$(_mtime "${LAST_DOCS_HINT}")
   # No more often than once every 3 days
   if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 3 ]; then
     echo "💡 JARVIS: ${CURRENT} code edits without a wiki update. Try \`jarvis docs\` to check wiki freshness."
@@ -121,7 +124,7 @@ echo "${SUGGEST_CURRENT}" > "${SUGGEST_COUNTER_FILE}"
 if [ "${SUGGEST_CURRENT}" -ge 100 ] && [ "${FIRED}" = "0" ]; then
   LAST_SUGGEST_HINT=".jarvis/last-suggest-hint"
   NOW_TS=$(date +%s)
-  LAST_TS=$(stat -f "%m" "${LAST_SUGGEST_HINT}" 2>/dev/null || echo 0)
+  LAST_TS=$(_mtime "${LAST_SUGGEST_HINT}")
   # No more often than once every 7 days
   if [ $(( (NOW_TS - LAST_TS) / 86400 )) -gt 7 ]; then
     echo "💡 JARVIS: ${SUGGEST_CURRENT} edits without an audit. Try \`jarvis suggest\` or \`jarvis audit\` for a quality review."

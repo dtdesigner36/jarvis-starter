@@ -1,21 +1,26 @@
 #!/bin/bash
-# JARVIS Safe Uninstall — removes only JARVIS traces, backs up CLAUDE.md/settings.json
+# JARVIS Safe Uninstall — removes only JARVIS traces, preserves user hooks/config
 #
 # What gets removed:
 #   .jarvis/                            (entirely)
 #   .claude/hooks/jarvis-*.sh           (only JARVIS hooks)
-#   .claude/hooks/{post-edit,post-bash,pre-prompt}.sh    (legacy bootstrap names)
-#   .claude/hooks/*.pre-jarvis*.bak     (our own hook backups)
-#   hooks block from .claude/settings.json (via jq, structured delete)
+#   JARVIS-appended block in legacy {post-edit,post-bash,pre-prompt}.sh
+#   .claude/hooks/*.pre-jarvis*.bak     (our own backups, after restore)
+#   JARVIS hook entries from .claude/settings.json (selective jq filter)
 #   JARVIS section from CLAUDE.md (from the first jarvis marker to EOF)
 #   .agents/skills/jarvis-starter       (npm install)
 #
-# What's preserved:
+# What's preserved (non-destructive guarantees):
+#   user-owned post-edit.sh / post-bash.sh / pre-prompt.sh — restored from
+#     .pre-jarvis.bak if present, else JARVIS-appended block stripped by sentinel,
+#     else file left untouched
+#   user hook entries in settings.json (only entries whose command points at
+#     a JARVIS hook file are removed — non-JARVIS hooks stay)
 #   .claude/settings.local.json         (user permissions)
 #   wiki/                                (user content even if JARVIS created it)
 #   .gitignore / other user files
 #
-# A backup is taken into .jarvis-uninstall-backup-<TS>/ before any edit.
+# A backup is taken into jarvis-uninstall-backup-<TS>/ before any edit.
 
 set -euo pipefail
 
@@ -35,12 +40,16 @@ mkdir -p "${BACKUP_DIR}"
 for f in CLAUDE.md .claude/settings.json; do
   [ -f "$f" ] && cp "$f" "${BACKUP_DIR}/$(basename "$f")"
 done
+# Backup legacy hook files too — they may have been merged with user content
+for h in .claude/hooks/post-edit.sh .claude/hooks/post-bash.sh .claude/hooks/pre-prompt.sh; do
+  [ -f "$h" ] && cp "$h" "${BACKUP_DIR}/$(basename "$h")"
+done
 # Backup .jarvis/ — memory.md / state.md / usage-log.md may contain
-# valuable user context (retest v0.2.1 feedback).
+# valuable user context.
 if [ -d .jarvis ]; then
   cp -R .jarvis "${BACKUP_DIR}/.jarvis"
 fi
-echo "→ Backups in ${BACKUP_DIR}/ (incl. .jarvis/)"
+echo "→ Backups in ${BACKUP_DIR}/ (incl. .jarvis/ and legacy hook files)"
 
 # 2. .jarvis/ — entire dir (backup already taken)
 if [ -d .jarvis ]; then
@@ -48,23 +57,88 @@ if [ -d .jarvis ]; then
   echo "→ .jarvis/ removed"
 fi
 
-# 3. JARVIS hooks only
+# 3. Hooks — non-destructive
+# JARVIS-owned hooks (jarvis-*.sh) are removed wholesale.
+# Legacy bootstrap names (post-edit/post-bash/pre-prompt.sh) are restored from
+# .pre-jarvis.bak if present, otherwise the JARVIS-appended block is stripped
+# by sentinel, otherwise file is left untouched (it's user-owned).
+
+restore_or_skip() {
+  local path="$1"
+  local bak="${path}.pre-jarvis.bak"
+  if [ ! -f "$path" ]; then
+    return 0
+  fi
+  if [ -f "$bak" ]; then
+    mv "$bak" "$path"
+    echo "→ ${path}: restored from $(basename "$bak")"
+    return 0
+  fi
+  if grep -qF '# === JARVIS-starter hooks (appended) ===' "$path"; then
+    python3 - "$path" <<'PY'
+import sys
+path = sys.argv[1]
+sentinel = "# === JARVIS-starter hooks (appended) ==="
+with open(path, encoding="utf-8") as f:
+    content = f.read()
+idx = content.find(sentinel)
+if idx == -1:
+    sys.exit(0)
+# Backtrack over the blank line bootstrap.sh added before the sentinel,
+# so the user's pre-existing tail isn't padded with our newline.
+prefix = content[:idx].rstrip("\n")
+new = prefix + ("\n" if prefix else "")
+with open(path, "w", encoding="utf-8") as f:
+    f.write(new)
+PY
+    echo "→ ${path}: stripped JARVIS-appended block, kept user content"
+    return 0
+  fi
+  # Greenfield install: no .bak, no sentinel — file was cp'd verbatim from our
+  # template. Detect by JARVIS skill-internal path references; if present, the
+  # file is wholly ours and safe to remove.
+  if grep -qE 'core/(wiki-maintenance|security-watch|focus-tracker|task-routing)' "$path"; then
+    rm -f "$path"
+    echo "→ ${path}: greenfield JARVIS install — removed"
+    return 0
+  fi
+  echo "→ ${path}: no JARVIS markers — left untouched"
+}
+
 if [ -d .claude/hooks ]; then
   rm -f .claude/hooks/jarvis-*.sh
-  rm -f .claude/hooks/post-edit.sh .claude/hooks/post-bash.sh .claude/hooks/pre-prompt.sh
+  for legacy in .claude/hooks/post-edit.sh .claude/hooks/post-bash.sh .claude/hooks/pre-prompt.sh; do
+    restore_or_skip "$legacy"
+  done
+  # Cleanup our own backups AFTER restore (otherwise we'd remove the source we need)
   rm -f .claude/hooks/*.pre-jarvis*.bak
   rmdir .claude/hooks 2>/dev/null || true
-  echo "→ JARVIS hooks removed"
+  echo "→ JARVIS hooks removed (user hooks preserved)"
 fi
 
-# 4. Strip hooks from settings.json (jq — atomic, preserves user config)
+# 4. Strip ONLY JARVIS hook entries from settings.json
+# Selective filter: drops inner hook entries whose command points at jarvis-*.sh
+# or legacy {post-edit,post-bash,pre-prompt}.sh under .claude/hooks/.
+# User hook entries (any other command) are preserved.
 if [ -f .claude/settings.json ]; then
   if command -v jq >/dev/null 2>&1; then
-    jq 'del(.hooks)' .claude/settings.json > .claude/settings.json.new
+    jq '
+      .hooks |= (
+        to_entries
+        | map(.value |= (
+            map(.hooks |= map(select(
+              (.command // "") | test("jarvis-|/\\.claude/hooks/(post-edit|post-bash|pre-prompt)\\.sh") | not
+            )))
+            | map(select(.hooks | length > 0))
+          ))
+        | map(select(.value | length > 0))
+        | from_entries
+      ) | if (.hooks // {}) == {} then del(.hooks) else . end
+    ' .claude/settings.json > .claude/settings.json.new
     mv .claude/settings.json.new .claude/settings.json
-    echo "→ .claude/settings.json: hooks removed, user config (theme/permissions/env) preserved"
+    echo "→ .claude/settings.json: only JARVIS hook entries removed; user hooks/config preserved"
   else
-    echo "⚠️  jq not installed — settings.json untouched (manually remove the \"hooks\" block)"
+    echo "⚠️  jq not installed — settings.json untouched (manually remove JARVIS hook entries)"
   fi
 fi
 
@@ -97,9 +171,14 @@ if not positions:
 cut_at = min(positions)
 
 if cut_at == 0:
-    new_content = ""
-else:
-    new_content = content[:cut_at].rstrip() + "\n"
+    # Marker at byte 0 → the whole file is JARVIS-owned (bootstrap created it).
+    # Delete rather than truncate-to-empty; user reverts to pre-install state.
+    import os
+    os.remove(path)
+    print("→ CLAUDE.md: JARVIS-owned — file removed")
+    sys.exit(0)
+
+new_content = content[:cut_at].rstrip() + "\n"
 
 # Guard: if the cleanup made the file empty while the source wasn't — DON'T save
 if not new_content.strip() and content.strip():
