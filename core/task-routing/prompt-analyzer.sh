@@ -72,7 +72,8 @@ if [ "$PROMPT_LEN" -gt 150 ]; then
   CLASS="Medium"
 fi
 
-ARCH_KEYWORDS="new system|new feature|add system|implement fully|build fully|rewrite|refactor|migration|architecture|from scratch"
+# Bilingual (RU + EN) — classification must be prompt-language invariant
+ARCH_KEYWORDS="новая систем|новую систему|новая фича|новую фичу|добавь систему|реализуй полностью|сделай полностью|перепиши|миграц|архитектур|с нуля|new system|new feature|add system|implement fully|build fully|rewrite|refactor|migration|architecture|from scratch"
 if echo "$PROMPT" | grep -qiE "$ARCH_KEYWORDS"; then
   if [ "$PROMPT_LEN" -gt 100 ]; then
     CLASS="Complex"
@@ -81,11 +82,11 @@ if echo "$PROMPT" | grep -qiE "$ARCH_KEYWORDS"; then
   fi
 fi
 
-if echo "$PROMPT" | grep -qiE "implement everything|create project|build a system|full implementation|end-to-end|e2e"; then
+if echo "$PROMPT" | grep -qiE "реализуй все|создай проект|разработай систему|полная реализация|end-to-end|e2e|implement everything|create project|build a system|full implementation"; then
   CLASS="Complex"
 fi
 
-if echo "$PROMPT" | grep -qiE "refactoring|stack change|migration to|rewrite architecture"; then
+if echo "$PROMPT" | grep -qiE "рефакторинг|смена стека|миграция на|переписать архитектуру|refactoring|stack change|migration to|rewrite architecture"; then
   CLASS="Architectural"
 fi
 

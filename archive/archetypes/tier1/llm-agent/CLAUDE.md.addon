@@ -1,0 +1,17 @@
+## LLM-agent Rules
+
+- `prompts/*.md` or `prompts/*.ts` changed → warn about regression risk; suggest running evals + bumping prompt version
+- New tool registered → add to wiki/Tools/<name>.md + ensure tool description is unambiguous (agents pick wrong tool when descriptions overlap)
+- Hardcoded model string (`claude-3-5-sonnet-latest`, `gpt-4-turbo-preview`, `claude-sonnet-*-latest`) → ❌ pin a specific version (e.g. `claude-sonnet-4-5-20250929`) — `-latest` changes behavior silently
+- `anthropic.messages.create(...)` without `cache_control` on system prompt → ⚠️ propose prompt caching (large cost delta for repeated calls)
+- User-supplied content concatenated into a system prompt → ⚠️ prompt-injection risk; wrap in a clearly-labeled user turn, don't inline into `system`
+- PII (email, phone, full name, credit-card) sent to LLM without filtering → ❌ mask/redact before the call
+- Agent given filesystem/shell tool access without path allow-list → ❌ scope narrowly
+
+### For vibe-coders
+- Pin model versions from day one — "latest" aliases shift underneath you and break reproducibility
+- Cache your system prompt (`cache_control: {type: "ephemeral"}`) — 90% cost reduction on repeated requests is normal
+- Keep prompts in files (`prompts/*.md`), not string literals — makes versioning and diff-review possible
+- Start with one eval before shipping — even 5 hand-written test cases catch most regressions
+- Redact user prompts in logs if they may contain PII; LLM logs are long-lived
+- Rate-limit per user — LLM APIs are expensive, abuse is easy

@@ -76,10 +76,25 @@ fi
 # ─── 1. Create .jarvis/ (safe merge) ──────────────────────────────
 mkdir -p .jarvis
 
+# Namespace matrix (parity with adopt.sh): if user already has docs/ but no
+# wiki/, JARVIS owns .jarvis/systems/ instead of a parallel wiki/ tree.
+WIKI_LOCATION="wiki"
+if [ -d docs ] && [ ! -d wiki ]; then
+  WIKI_LOCATION=".jarvis"
+fi
+
 if [ ! -f .jarvis/state.md ]; then
-  echo "# JARVIS State" > .jarvis/state.md
-  echo "bootstrap-date: $(date +%Y-%m-%d)" >> .jarvis/state.md
-  echo "archetypes: ${ARCHETYPE}${SECONDARY:+ + $SECONDARY}" >> .jarvis/state.md
+  cat > .jarvis/state.md <<EOF
+# JARVIS State
+mode: bootstrap
+bootstrap-date: $(date +%Y-%m-%d)
+project-root: $(pwd)
+skill-path: ${SKILL_PATH}
+archetypes: ${ARCHETYPE}${SECONDARY:+ + $SECONDARY}
+wiki-ownership: active
+wiki-location: ${WIKI_LOCATION}
+owned-files:
+EOF
 fi
 
 touch .jarvis/memory.md .jarvis/focus.md .jarvis/timeline.md
