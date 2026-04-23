@@ -140,7 +140,7 @@ if [ -f .claude/settings.json ]; then
                     if (.hooks | type) != "array" then .
                     else
                       .hooks |= map(select(
-                        (.command // "") | test("jarvis-|/\\.claude/hooks/(post-edit|post-bash|pre-prompt)\\.sh") | not
+                        (.command // "") | test("/\\.claude/hooks/jarvis-[^/]+\\.sh|/\\.claude/hooks/(post-edit|post-bash|pre-prompt)\\.sh") | not
                       ))
                     end
                   )

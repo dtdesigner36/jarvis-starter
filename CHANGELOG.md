@@ -4,6 +4,19 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-04-23
+
+Micro-polish from the v0.2.2 re-audit. Three small fixes so the 0.2.x line can be declared closed.
+
+### Fixed
+
+- **`safe-uninstall.sh`: jq matcher narrowed.** Previous pattern `test("jarvis-|...")` matched any command containing `jarvis-` as a substring — including a user's own `python tools/jarvis-helper.py` or `bash /other/jarvis-inspired-hook.sh`, which would then be dropped from `settings.json`. The matcher is now anchored to the JARVIS hook directory: `/\.claude/hooks/jarvis-[^/]+\.sh` (or legacy `post-edit|post-bash|pre-prompt.sh` under the same dir). User hooks outside `.claude/hooks/` or with `jarvis-` only as part of a filename no longer false-positive.
+- **`adopt.sh` `seed_memory()`: `git rev-parse --verify HEAD` preflight** replaces the `|| true` fallback from v0.2.2. Zero-commit repos are handled cleanly (no bogus "Recent commits" section is emitted); real `git log` failures are no longer silently masked.
+
+### Changed
+
+- **README: adopt-mode claim truth-up.** "Leaves your existing CLAUDE.md, hooks, and docs untouched" → explicit description: one marker line is added to `CLAUDE.md`; hooks and docs are left in place; pre-existing legacy hook files are wrapped in a sentinel block that `safe-uninstall.sh` undoes. Closes the last "adopt is invasive-but-claims-otherwise" overclaim flagged in the re-audit.
+
 ## [0.2.2] — 2026-04-23
 
 Follow-up hotfix from the v0.2.1 codex re-audit. Five small, targeted fixes that close the remaining findings without scope creep. No new features.
@@ -132,7 +145,8 @@ First public release.
 
 Built on patterns from `@alinaqi/claude-bootstrap`, `@pbakaus/impeccable`, `@emilkowalski/skill`, `@leonxlnx/taste-skill`, `anthropics/skills`, `@wcpaxx/spec-kit-brownfield-extensions`, `@travisvn/awesome-claude-skills`. See [NOTICE.md](NOTICE.md) for full attribution.
 
-[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.3
 [0.2.2]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.2
 [0.2.1]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.1
 [0.2.0]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.0

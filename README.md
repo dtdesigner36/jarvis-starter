@@ -75,7 +75,8 @@ JARVIS walks you through:
 - Detects what you already have (living docs, husky pre-commit, linear integration, etc.)
 - Shows a gap matrix — proposes **only the features you're missing**
 - Installs those features in `.jarvis/` namespace + new `jarvis-*.sh` hook files
-- Leaves your existing CLAUDE.md, hooks, and docs untouched
+- Adds one marker line to your `CLAUDE.md` (`<!-- jarvis-starter-adopt: see .jarvis/state.md -->`); your own rules are never rewritten
+- Leaves your existing hooks and docs in place — pre-existing legacy hook files are wrapped in a sentinel-guarded block you can undo with `safe-uninstall.sh`, and `docs/` is never overwritten
 
 If you run `jarvis start` in an existing project, JARVIS detects the dev-stage (git history, mature lockfile, existing CLAUDE.md, living docs, CI) and auto-switches to Adopt. Force full bootstrap with `jarvis start --force` if you really mean it.
 

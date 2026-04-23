@@ -565,10 +565,9 @@ seed_memory() {
   {
     echo "# JARVIS Memory (auto-seeded)"
     echo ""
-    if [ "${HAS_GIT}" = "1" ]; then
+    if [ "${HAS_GIT}" = "1" ] && git rev-parse --verify HEAD >/dev/null 2>&1; then
       echo "## Recent commits (git log -50)"
-      # `|| true` survives a git repo with zero commits (exit 128) under pipefail
-      git log --oneline -50 2>/dev/null | head -50 | sed 's/^/- /' || true
+      git log --oneline -50 2>/dev/null | head -50 | sed 's/^/- /'
       echo ""
     fi
     if [ "${HAS_README}" = "1" ]; then
