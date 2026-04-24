@@ -4,6 +4,27 @@ All notable changes to JARVIS-Starter are documented here. Format follows [Keep 
 
 ## [Unreleased]
 
+## [0.2.5] — 2026-04-24
+
+Emergency hotfix for v0.2.4 regression. The same real developer who reported the v0.2.3 bugs ran v0.2.4 on a fresh `npx skills add` and bootstrap **crashed on every install**: `cat: .../archive/templates/universal/.gitignore.template: No such file or directory`. Root cause: the skill distribution layer strips **dotfiles** during `npx skills add` packaging, so the file existed in git but was absent from the installed skill. The trust-fix from v0.2.4 (bootstrap verifies on disk) turned an earlier silent data-loss into a loud `exit 1` on step 2b — better than silent failure, but an across-the-board installation block.
+
+### Fixed
+
+- **`.gitignore.template` renamed to `gitignore.template`** (no leading dot) in `archive/templates/universal/`. Skill distribution strips dotfiles — the template was present in the git tree but absent in the installed skill. Bootstrap and adopt now reference the non-dotfile name. Confirmed via fresh-install E2E: template survives packaging and bootstrap completes.
+- **`bootstrap.sh` + `adopt.sh`: graceful skip if template is missing.** Previously `cat "${UNIVERSAL}/.gitignore.template" >> .gitignore` under `set -e` aborted the entire install when the template was missing. Now the scripts check for the template first; if absent, they emit a clear warning (`.gitignore template missing in package`) and continue with the rest of the install. This is defence-in-depth — the rename fixes the root cause, but future template-distribution bugs won't block bootstrap.
+
+### Added
+
+- **`jarvis self-audit` warns loudly when `jq` is missing** (codex's last v0.2.3 finding). Previously the hook-health section was guarded by `if command -v jq && [ -f settings.json ]` and silently skipped both branches on missing `jq`. Now the branches are explicit: `⚠ Hook health: unavailable (jq not installed)` + install command hints, or `⚠ Hook health: unavailable (.claude/settings.json not found)` + recovery hint. Closes the last honesty gap that codex flagged as optional for the 0.2.x close.
+
+### Changed
+
+- Nothing. No behavioral changes outside the three fixes above.
+
+### Deferred — v0.3 scope
+
+Same list as v0.2.4. The v0.3 hook-health/observability item is now more urgent — real-world evidence that the installer can ship broken and users find out only on first install.
+
 ## [0.2.4] — 2026-04-23
 
 Trust hotfix driven by a real-user review. A developer ran `npx skills add` + `jarvis start` on a fresh Node/Express + D3 project and hit two failure modes that all four prior codex audit passes and 21-step E2E had missed. This release closes both plus minimum degraded-mode visibility.
@@ -163,7 +184,8 @@ First public release.
 
 Built on patterns from `@alinaqi/claude-bootstrap`, `@pbakaus/impeccable`, `@emilkowalski/skill`, `@leonxlnx/taste-skill`, `anthropics/skills`, `@wcpaxx/spec-kit-brownfield-extensions`, `@travisvn/awesome-claude-skills`. See [NOTICE.md](NOTICE.md) for full attribution.
 
-[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/dtdesigner36/jarvis-starter/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.5
 [0.2.4]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.4
 [0.2.3]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.3
 [0.2.2]: https://github.com/dtdesigner36/jarvis-starter/releases/tag/v0.2.2

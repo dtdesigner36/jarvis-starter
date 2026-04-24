@@ -113,9 +113,13 @@ UNIVERSAL="${SKILL_PATH}/archive/templates/universal"
 # If we don't pre-ignore it, `git init && git add -A` sweeps hundreds of
 # template files into the user's first commit. Real user hit this on v0.2.3.
 JARVIS_GITIGNORE_MARK="# JARVIS-starter installed skill payload"
-if [ ! -f .gitignore ] || ! grep -qF "$JARVIS_GITIGNORE_MARK" .gitignore; then
+JARVIS_GITIGNORE_TMPL="${UNIVERSAL}/gitignore.template"
+if [ ! -f "${JARVIS_GITIGNORE_TMPL}" ]; then
+  echo "  ⚠️ .gitignore: template missing in package (${JARVIS_GITIGNORE_TMPL}) — skipped."
+  echo "     You may want to add .agents/ and skills-lock.json manually."
+elif [ ! -f .gitignore ] || ! grep -qF "$JARVIS_GITIGNORE_MARK" .gitignore; then
   [ -f .gitignore ] && echo "" >> .gitignore
-  cat "${UNIVERSAL}/.gitignore.template" >> .gitignore
+  cat "${JARVIS_GITIGNORE_TMPL}" >> .gitignore
   echo "  ✅ .gitignore: added JARVIS artifacts (.agents/, skills-lock.json, backups)"
 fi
 

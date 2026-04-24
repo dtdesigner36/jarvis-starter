@@ -492,11 +492,14 @@ owned-files:
 EOF
 touch .jarvis/memory.md .jarvis/focus.md .jarvis/timeline.md
 
-# .gitignore — idempotent merge of JARVIS artifact rules (v0.2.4)
+# .gitignore — idempotent merge of JARVIS artifact rules (v0.2.4+)
 JARVIS_GITIGNORE_MARK="# JARVIS-starter installed skill payload"
-if [ ! -f .gitignore ] || ! grep -qF "$JARVIS_GITIGNORE_MARK" .gitignore; then
+JARVIS_GITIGNORE_TMPL="${UNIVERSAL}/gitignore.template"
+if [ ! -f "${JARVIS_GITIGNORE_TMPL}" ]; then
+  echo "   ⚠ .gitignore: template missing in package (${JARVIS_GITIGNORE_TMPL}) — skipped."
+elif [ ! -f .gitignore ] || ! grep -qF "$JARVIS_GITIGNORE_MARK" .gitignore; then
   [ -f .gitignore ] && echo "" >> .gitignore
-  cat "${UNIVERSAL}/.gitignore.template" >> .gitignore
+  cat "${JARVIS_GITIGNORE_TMPL}" >> .gitignore
   echo "   ✓ .gitignore: added JARVIS artifacts (.agents/, skills-lock.json, backups)"
 fi
 
